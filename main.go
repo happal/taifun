@@ -33,6 +33,8 @@ type Options struct {
 	Logdir  string
 	Threads int
 
+	RequestsPerSecond float64
+
 	ShowNotFound bool
 }
 
@@ -232,6 +234,11 @@ func run(ctx context.Context, g *errgroup.Group, opts *Options, args []string) e
 	// filter values (skip, limit)
 	valueCh, countCh = setupValueFilters(ctx, opts, valueCh, countCh)
 
+	// limit the throughput (if requested)
+	if opts.RequestsPerSecond > 0 {
+		valueCh = producer.Limit(ctx, opts.RequestsPerSecond, valueCh)
+	}
+
 	// start the resolvers
 	responseCh, err := startResolvers(ctx, opts, hostname, valueCh)
 	if err != nil {
@@ -288,6 +295,7 @@ func main() {
 
 	flags := cmd.Flags()
 	flags.IntVarP(&opts.Threads, "threads", "t", 5, "resolve `n` DNS queries in parallel")
+	flags.Float64Var(&opts.RequestsPerSecond, "requests-per-second", 0, "do at most `n` requests per seconds (e.g. 0.5)")
 	flags.IntVar(&opts.BufferSize, "buffer-size", 100000, "set number of buffered items to `n`")
 	flags.StringVar(&opts.Logfile, "logfile", "", "write copy of printed messages to `filename`.log")
 	flags.StringVar(&opts.Logdir, "logdir", os.Getenv("HAGEL_LOG_DIR"), "automatically log all output to files in `dir`")
