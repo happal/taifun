@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"sort"
+	"strings"
 	"time"
 
 	"github.com/happal/hagel/cli"
@@ -20,10 +20,11 @@ func NewReporter(term cli.Terminal) *Reporter {
 
 // Stats collects statistics about several responses.
 type Stats struct {
-	Start          time.Time
-	StatusCodes    map[int]int
-	Errors         int
-	Responses      int
+	Start      time.Time
+	Errors     int
+	Responses  int
+	IPv4, IPv6 map[string]struct{}
+
 	ShownResponses int
 	Count          int
 
@@ -76,22 +77,21 @@ func (h *Stats) Report(current string) (res []string) {
 
 	res = append(res, status)
 
-	for code, count := range h.StatusCodes {
-		res = append(res, fmt.Sprintf("%v: %v", code, count))
-	}
-
-	sort.Strings(res[2:])
+	res = append(res, fmt.Sprintf("errors:    %v", h.Errors))
+	res = append(res, fmt.Sprintf("IPv4:      %v", len(h.IPv4)))
+	res = append(res, fmt.Sprintf("IPv6:      %v", len(h.IPv6)))
 
 	return res
 }
 
 // Display shows incoming Responses.
 func (r *Reporter) Display(ch <-chan Response, countChannel <-chan int) error {
-	r.term.Printf("%-40s %-16s\n", "name", "response")
+	r.term.Printf("%-30s %-16s\n", "name", "response")
 
 	stats := &Stats{
-		Start:       time.Now(),
-		StatusCodes: make(map[int]int),
+		Start: time.Now(),
+		IPv4:  make(map[string]struct{}),
+		IPv6:  make(map[string]struct{}),
 	}
 
 	for response := range ch {
@@ -105,7 +105,13 @@ func (r *Reporter) Display(ch <-chan Response, countChannel <-chan int) error {
 		if response.Error != nil {
 			stats.Errors++
 		} else {
-			// stats.StatusCodes[response.HTTPResponse.StatusCode]++
+			for _, addr := range response.Addresses {
+				if strings.Contains(addr, ":") {
+					stats.IPv6[addr] = struct{}{}
+				} else {
+					stats.IPv4[addr] = struct{}{}
+				}
+			}
 		}
 
 		if !response.Hide {

@@ -35,10 +35,10 @@ func (r Response) IsNotFound() bool {
 
 func (r Response) String() string {
 	if r.IsNotFound() {
-		return fmt.Sprintf("%-40s %-16s", r.Hostname, "error: not found")
+		return fmt.Sprintf("%-30s %-16s", r.Hostname, "error: not found")
 	}
 
-	return fmt.Sprintf("%-40s %-16s", r.Hostname, strings.Join(r.Addresses, ", "))
+	return fmt.Sprintf("%-30s %-16s", r.Hostname, strings.Join(r.Addresses, ", "))
 }
 
 // Mark runs the filters on all responses and marks those that should be hidden.
