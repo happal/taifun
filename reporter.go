@@ -83,7 +83,7 @@ func (h *Stats) Report(current string) (res []string) {
 
 // Display shows incoming Responses.
 func (r *Reporter) Display(ch <-chan Response, countChannel <-chan int) error {
-	r.term.Printf("%7s %8s\n", "name", "response")
+	r.term.Printf("%-40s %-16s\n", "name", "response")
 
 	stats := &Stats{
 		Start:       time.Now(),

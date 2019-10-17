@@ -24,11 +24,13 @@ func NewResolver(in <-chan string, out chan<- Response, template string) *Resolv
 	}
 }
 
-func lookup(name string) Response {
+func lookup(template, item string) Response {
+	name := strings.Replace(template, "FUZZ", item, -1)
 	start := time.Now()
 	addrs, err := net.LookupHost(name)
 	res := Response{
-		Item:      name,
+		Hostname:  name,
+		Item:      item,
 		Duration:  time.Since(start),
 		Addresses: addrs,
 		Error:     err,
@@ -40,8 +42,7 @@ func lookup(name string) Response {
 // Run runs a resolver, processing requests from the input channel.
 func (r *Resolver) Run(ctx context.Context) {
 	for item := range r.input {
-		name := strings.Replace(r.template, "FUZZ", item, -1)
-		res := lookup(name)
+		res := lookup(r.template, item)
 
 		select {
 		case <-ctx.Done():

@@ -32,6 +32,8 @@ type Options struct {
 	Logfile string
 	Logdir  string
 	Threads int
+
+	ShowNotFound bool
 }
 
 func (opts *Options) valid() (err error) {
@@ -148,6 +150,13 @@ func setupValueFilters(ctx context.Context, opts *Options, valueCh <-chan string
 	return valueCh, countCh
 }
 
+func setupResponseFilters(opts *Options) (filters []Filter, err error) {
+	if !opts.ShowNotFound {
+		filters = append(filters, FilterNotFound())
+	}
+	return filters, nil
+}
+
 func startResolvers(ctx context.Context, opts *Options, hostname string, in <-chan string) (<-chan Response, error) {
 	out := make(chan Response)
 
@@ -203,11 +212,10 @@ func run(ctx context.Context, g *errgroup.Group, opts *Options, args []string) e
 	}
 
 	// collect the filters for the responses
-	responseFilters := []Filter{}
-	// responseFilters, err := setupResponseFilters(opts)
-	// if err != nil {
-	// 	return err
-	// }
+	responseFilters, err := setupResponseFilters(opts)
+	if err != nil {
+		return err
+	}
 
 	// setup the pipeline for the values
 	vch := make(chan string, opts.BufferSize)
@@ -290,6 +298,8 @@ func main() {
 	flags.StringVarP(&opts.Filename, "file", "f", "", "read values to test from `filename`")
 	flags.StringVarP(&opts.Range, "range", "r", "", "test range `from-to`")
 	flags.StringVar(&opts.RangeFormat, "range-format", "%d", "set `format` for range")
+
+	flags.BoolVar(&opts.ShowNotFound, "show-not-found", false, "do not hide 'not found' responses")
 
 	err := cmd.Execute()
 	if err != nil {

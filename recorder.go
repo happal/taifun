@@ -34,7 +34,7 @@ type Data struct {
 
 // RecordedResponse is the result of a request sent to the target.
 type RecordedResponse struct {
-	Item     string  `json:"item"`
+	Hostname string  `json:"hostname"`
 	Error    string  `json:"error,omitempty"`
 	Duration float64 `json:"duration"`
 
@@ -149,7 +149,7 @@ func (r *Recorder) dump(data Data) error {
 
 // NewResponse builds a Response struct for serialization with JSON.
 func NewResponse(r Response) (res RecordedResponse) {
-	res.Item = r.Item
+	res.Hostname = r.Hostname
 	if r.Duration != 0 {
 		res.Duration = float64(r.Duration) / float64(time.Second)
 	}

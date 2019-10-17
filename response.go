@@ -1,16 +1,44 @@
 package main
 
-import "time"
+import (
+	"fmt"
+	"net"
+	"strings"
+	"time"
+)
 
 // Response is a response as received from a server.
 type Response struct {
 	Hide bool // can be set by a filter, response should not be displayed
 
-	Item      string // requested hostname
+	Item      string // requested item and hostname
+	Hostname  string
 	Addresses []string
 
 	Duration time.Duration
 	Error    error
+}
+
+// IsNotFound returns true if the requested hostname could not be found.
+func (r Response) IsNotFound() bool {
+	if r.Error == nil {
+		return false
+	}
+
+	err, ok := r.Error.(*net.DNSError)
+	if !ok {
+		return false
+	}
+
+	return err.IsNotFound
+}
+
+func (r Response) String() string {
+	if r.IsNotFound() {
+		return fmt.Sprintf("%-40s %-16s", r.Hostname, "error: not found")
+	}
+
+	return fmt.Sprintf("%-40s %-16s", r.Hostname, strings.Join(r.Addresses, ", "))
 }
 
 // Mark runs the filters on all responses and marks those that should be hidden.
