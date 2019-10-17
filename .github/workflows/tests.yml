@@ -28,11 +28,11 @@ jobs:
 
       - name: Build
         run: |
-          go run -mod=vendor build.go --goos linux
-          go run -mod=vendor build.go --goos windows
-          go run -mod=vendor build.go --goos darwin
+          GOOS=linux go build -o hagel.linux
+          GOOS=windows go build -o hagel.windows
+          GOOS=darwin go build -o hagel.darwin
 
       - name: Run tests
         run: |
           export PATH=$HOME/bin:$PATH
-          go test -mod=vendor ./...
+          go test ./...
