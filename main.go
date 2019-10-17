@@ -33,6 +33,8 @@ type Options struct {
 	Logdir  string
 	Threads int
 
+	Nameserver string
+
 	RequestsPerSecond float64
 
 	ShowNotFound bool
@@ -164,7 +166,7 @@ func startResolvers(ctx context.Context, opts *Options, hostname string, in <-ch
 
 	var wg sync.WaitGroup
 	for i := 0; i < opts.Threads; i++ {
-		resolver := NewResolver(in, out, hostname)
+		resolver := NewResolver(in, out, hostname, opts.Nameserver)
 		wg.Add(1)
 		go func() {
 			resolver.Run(ctx)
@@ -194,6 +196,11 @@ func run(ctx context.Context, g *errgroup.Group, opts *Options, args []string) e
 
 	if !strings.Contains(hostname, "FUZZ") {
 		return errors.New(`hostname does not contain the string "FUZZ"`)
+	}
+
+	// make sure the hostname is absolute
+	if !strings.HasSuffix(hostname, ".") {
+		hostname += "."
 	}
 
 	err := opts.valid()
@@ -306,6 +313,8 @@ func main() {
 	flags.StringVarP(&opts.Filename, "file", "f", "", "read values to test from `filename`")
 	flags.StringVarP(&opts.Range, "range", "r", "", "test range `from-to`")
 	flags.StringVar(&opts.RangeFormat, "range-format", "%d", "set `format` for range")
+
+	flags.StringVar(&opts.Nameserver, "nameserver", "", "send DNS queries to `server`, if empty, the system resolver is used")
 
 	flags.BoolVar(&opts.ShowNotFound, "show-not-found", false, "do not hide 'not found' responses")
 
