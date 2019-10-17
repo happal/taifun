@@ -38,6 +38,10 @@ func (r Response) String() string {
 		return fmt.Sprintf("%-30s %-16s", r.Hostname, "error: not found")
 	}
 
+	if r.Error != nil {
+		return fmt.Sprintf("%-30s %-16s", r.Hostname, r.Error)
+	}
+
 	return fmt.Sprintf("%-30s %-16s", r.Hostname, strings.Join(r.Addresses, ", "))
 }
 

@@ -280,7 +280,7 @@ func run(ctx context.Context, g *errgroup.Group, opts *Options, args []string) e
 	}
 
 	// run the reporter
-	term.Printf("hostname %v\n\n", hostname)
+	term.Printf("\nusing hostname template: %v\n\n", hostname)
 	reporter := NewReporter(term)
 	return reporter.Display(responseCh, countCh)
 }
