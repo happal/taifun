@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net"
 	"strings"
-	"time"
+
+	"github.com/miekg/dns"
 )
 
 // Resolver executes DNS requests.
@@ -13,47 +15,92 @@ type Resolver struct {
 	output chan<- Response
 
 	template string
+	server   string
+}
 
-	*net.Resolver
+func findSystemResolver() (string, error) {
+	nameserver := ""
+	wantError := errors.New("findSystemResolver")
+
+	resolver := &net.Resolver{
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			nameserver = address
+			return nil, wantError
+		},
+	}
+
+	_, err := resolver.LookupHost(context.Background(), "example.com")
+	if err != wantError {
+		return "", errors.New("unable to find system nameserver, please specify a server manually")
+	}
+
+	return nameserver, nil
 }
 
 // NewResolver returns a new resolver with the given input and output channels.
-func NewResolver(in <-chan string, out chan<- Response, template string, server string) *Resolver {
-	resolver := &net.Resolver{
-		PreferGo:     true,
-		StrictErrors: true,
-	}
-
-	if server != "" {
-		// use the provided server, not the system DNS resolver by setting the
-		// Dial method to always use the provided server.
-		dialer := net.Dialer{}
-		resolver.Dial = func(ctx context.Context, network, address string) (net.Conn, error) {
-			return dialer.DialContext(ctx, "udp", net.JoinHostPort(server, "53"))
+func NewResolver(in <-chan string, out chan<- Response, template string, server string) (*Resolver, error) {
+	if server == "" {
+		var err error
+		server, err = findSystemResolver()
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return &Resolver{
+	res := &Resolver{
 		input:    in,
 		output:   out,
 		template: template,
-		Resolver: resolver,
+		server:   server,
 	}
+	return res, nil
 }
 
 func (r *Resolver) lookup(ctx context.Context, item string) Response {
 	name := strings.Replace(r.template, "FUZZ", item, -1)
-	start := time.Now()
-	addrs, err := r.LookupHost(ctx, name)
-	res := Response{
-		Hostname:  name,
-		Item:      item,
-		Duration:  time.Since(start),
-		Addresses: addrs,
-		Error:     err,
+
+	c := dns.Client{}
+	m := dns.Msg{}
+	m.SetQuestion(name, dns.TypeA)
+
+	response := Response{
+		Hostname: name,
+		Item:     item,
 	}
 
-	return res
+	res, duration, err := c.Exchange(&m, r.server+":53")
+	response.Duration = duration
+	response.Error = err
+	if err != nil {
+		return response
+	}
+
+	response.Status = dns.RcodeToString[res.MsgHdr.Rcode]
+	if res.MsgHdr.Rcode != dns.RcodeSuccess {
+		response.Failure = true
+	}
+
+	for _, ans := range res.Answer {
+		// disregard additional data we did not ask for
+		if ans.Header().Name != res.Question[0].Name {
+			continue
+		}
+
+		if rec, ok := ans.(*dns.A); ok {
+			response.Addresses = append(response.Addresses, rec.A.String())
+			continue
+		}
+		if rec, ok := ans.(*dns.AAAA); ok {
+			response.Addresses = append(response.Addresses, rec.AAAA.String())
+			continue
+		}
+		if rec, ok := ans.(*dns.CNAME); ok {
+			response.CNAMES = append(response.CNAMES, strings.TrimRight(rec.Target, "."))
+			continue
+		}
+	}
+
+	return response
 }
 
 // Run runs a resolver, processing requests from the input channel.

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"strings"
 	"time"
 )
@@ -11,38 +10,38 @@ import (
 type Response struct {
 	Hide bool // can be set by a filter, response should not be displayed
 
-	Item      string // requested item and hostname
-	Hostname  string
+	Item     string // requested item and hostname
+	Hostname string
+
+	Status  string // dns response status (e.g. NXDOMAIN)
+	Failure bool   // set if status is anything else than NOERROR
+
 	Addresses []string
+	CNAMES    []string
 
 	Duration time.Duration
 	Error    error
 }
 
-// IsNotFound returns true if the requested hostname could not be found.
-func (r Response) IsNotFound() bool {
-	if r.Error == nil {
-		return false
-	}
-
-	err, ok := r.Error.(*net.DNSError)
-	if !ok {
-		return false
-	}
-
-	return err.IsNotFound
-}
-
 func (r Response) String() string {
-	if r.IsNotFound() {
-		return fmt.Sprintf("%-30s %-16s", r.Hostname, "error: not found")
+	if r.Failure {
+		return fmt.Sprintf("%-30s lookup failure: %-16s", r.Hostname, r.Status)
 	}
 
 	if r.Error != nil {
 		return fmt.Sprintf("%-30s error: %v", r.Hostname, r.Error)
 	}
 
-	return fmt.Sprintf("%-30s %-16s", r.Hostname, strings.Join(r.Addresses, ", "))
+	addrs := ""
+	if len(r.Addresses) > 0 {
+		addrs += strings.Join(r.Addresses, ", ")
+	}
+
+	if len(r.CNAMES) > 0 {
+		addrs += fmt.Sprintf("CNAME %v", strings.Join(r.CNAMES, ", "))
+	}
+
+	return fmt.Sprintf("%-30s %-16s", r.Hostname, addrs)
 }
 
 // Mark runs the filters on all responses and marks those that should be hidden.

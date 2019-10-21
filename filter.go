@@ -16,6 +16,6 @@ func (f FilterFunc) Reject(r Response) bool {
 // FilterNotFound returns a filter which hides "not found" responses.
 func FilterNotFound() Filter {
 	return FilterFunc(func(r Response) bool {
-		return r.IsNotFound()
+		return r.Status == "NXDOMAIN"
 	})
 }

@@ -164,9 +164,13 @@ func setupResponseFilters(opts *Options) (filters []Filter, err error) {
 func startResolvers(ctx context.Context, opts *Options, hostname string, in <-chan string) (<-chan Response, error) {
 	out := make(chan Response)
 
+	resolver, err := NewResolver(in, out, hostname, opts.Nameserver)
+	if err != nil {
+		return nil, err
+	}
+
 	var wg sync.WaitGroup
 	for i := 0; i < opts.Threads; i++ {
-		resolver := NewResolver(in, out, hostname, opts.Nameserver)
 		wg.Add(1)
 		go func() {
 			resolver.Run(ctx)
