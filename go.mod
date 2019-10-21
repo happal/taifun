@@ -1,4 +1,4 @@
-module github.com/happal/hagel
+module github.com/happal/taifun
 
 require (
 	github.com/fd0/termstatus v1.0.1

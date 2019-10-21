@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/fd0/termstatus"
-	"github.com/happal/hagel/cli"
-	"github.com/happal/hagel/producer"
-	"github.com/happal/hagel/shell"
+	"github.com/happal/taifun/cli"
+	"github.com/happal/taifun/producer"
+	"github.com/happal/taifun/shell"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
@@ -60,7 +60,7 @@ func (opts *Options) valid() (err error) {
 func logfilePath(opts *Options, hostname string) (prefix string, err error) {
 	if opts.Logdir != "" && opts.Logfile == "" {
 		ts := time.Now().Format("20060102_150405")
-		fn := fmt.Sprintf("hagel_%s_%s", hostname, ts)
+		fn := fmt.Sprintf("taifun_%s_%s", hostname, ts)
 		p := filepath.Join(opts.Logdir, fn)
 		return p, nil
 	}
@@ -289,7 +289,7 @@ func main() {
 	var opts Options
 
 	cmd := &cobra.Command{
-		Use:                   "hagel [options] HOSTNAME",
+		Use:                   "taifun [options] HOSTNAME",
 		DisableFlagsInUseLine: true,
 		SilenceErrors:         true,
 		SilenceUsage:          true,
@@ -305,7 +305,7 @@ func main() {
 	flags.Float64Var(&opts.RequestsPerSecond, "requests-per-second", 0, "do at most `n` requests per seconds (e.g. 0.5)")
 	flags.IntVar(&opts.BufferSize, "buffer-size", 100000, "set number of buffered items to `n`")
 	flags.StringVar(&opts.Logfile, "logfile", "", "write copy of printed messages to `filename`.log")
-	flags.StringVar(&opts.Logdir, "logdir", os.Getenv("HAGEL_LOG_DIR"), "automatically log all output to files in `dir`")
+	flags.StringVar(&opts.Logdir, "logdir", os.Getenv("TAIFUN_LOG_DIR"), "automatically log all output to files in `dir`")
 
 	flags.IntVar(&opts.Skip, "skip", 0, "skip the first `n` requests")
 	flags.IntVar(&opts.Limit, "limit", 0, "only run `n` requests, then exit")

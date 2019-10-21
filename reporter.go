@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/happal/hagel/cli"
+	"github.com/happal/taifun/cli"
 )
 
 // Reporter prints the Responses to a terminal.
