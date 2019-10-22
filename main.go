@@ -154,15 +154,15 @@ func setupValueFilters(ctx context.Context, opts *Options, valueCh <-chan string
 	return valueCh, countCh
 }
 
-func setupResponseFilters(opts *Options) (filters []Filter, err error) {
+func setupResultFilters(opts *Options) (filters []Filter, err error) {
 	if !opts.ShowNotFound {
 		filters = append(filters, FilterNotFound())
 	}
 	return filters, nil
 }
 
-func startResolvers(ctx context.Context, opts *Options, hostname string, in <-chan string) (<-chan Response, error) {
-	out := make(chan Response)
+func startResolvers(ctx context.Context, opts *Options, hostname string, in <-chan string) (<-chan Result, error) {
+	out := make(chan Result)
 
 	resolver, err := NewResolver(in, out, hostname, opts.Nameserver)
 	if err != nil {
@@ -235,7 +235,7 @@ func run(ctx context.Context, g *errgroup.Group, opts *Options, args []string) e
 	}
 
 	// collect the filters for the responses
-	responseFilters, err := setupResponseFilters(opts)
+	responseFilters, err := setupResultFilters(opts)
 	if err != nil {
 		return err
 	}
@@ -280,7 +280,7 @@ func run(ctx context.Context, g *errgroup.Group, opts *Options, args []string) e
 		rec.Data.Range = opts.Range
 		rec.Data.RangeFormat = opts.RangeFormat
 
-		out := make(chan Response)
+		out := make(chan Result)
 		in := responseCh
 		responseCh = out
 

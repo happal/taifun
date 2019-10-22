@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// Response is a response as received from a server.
-type Response struct {
+// Result is a response as received from a server.
+type Result struct {
 	Hide bool // can be set by a filter, response should not be displayed
 
 	Item     string // requested item and hostname
@@ -23,7 +23,7 @@ type Response struct {
 	Error    error
 }
 
-func (r Response) String() string {
+func (r Result) String() string {
 	if r.Failure {
 		return fmt.Sprintf("%-30s lookup failure: %-16s", r.Hostname, r.Status)
 	}
@@ -45,8 +45,8 @@ func (r Response) String() string {
 }
 
 // Mark runs the filters on all responses and marks those that should be hidden.
-func Mark(in <-chan Response, filters []Filter) <-chan Response {
-	ch := make(chan Response)
+func Mark(in <-chan Result, filters []Filter) <-chan Result {
+	ch := make(chan Result)
 
 	go func() {
 		defer close(ch)

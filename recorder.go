@@ -15,25 +15,25 @@ type Recorder struct {
 
 // Data is the data structure written to the file by a Recorder.
 type Data struct {
-	Start           time.Time `json:"start"`
-	End             time.Time `json:"end"`
-	TotalRequests   int       `json:"total_requests"`
-	SentRequests    int       `json:"sent_requests"`
-	HiddenResponses int       `json:"hidden_responses"`
-	ShownResponses  int       `json:"shown_responses"`
-	Cancelled       bool      `json:"cancelled"`
+	Start         time.Time `json:"start"`
+	End           time.Time `json:"end"`
+	TotalRequests int       `json:"total_requests"`
+	SentRequests  int       `json:"sent_requests"`
+	HiddenResults int       `json:"hidden_responses"`
+	ShownResults  int       `json:"shown_responses"`
+	Cancelled     bool      `json:"cancelled"`
 
-	Hostname    string             `json:"hostname"`
-	InputFile   string             `json:"input_file,omitempty"`
-	Range       string             `json:"range,omitempty"`
-	RangeFormat string             `json:"range_format,omitempty"`
-	Responses   []RecordedResponse `json:"responses"`
-	Extract     []string           `json:"extract,omitempty"`
-	ExtractPipe []string           `json:"extract_pipe,omitempty"`
+	Hostname    string           `json:"hostname"`
+	InputFile   string           `json:"input_file,omitempty"`
+	Range       string           `json:"range,omitempty"`
+	RangeFormat string           `json:"range_format,omitempty"`
+	Results     []RecordedResult `json:"responses"`
+	Extract     []string         `json:"extract,omitempty"`
+	ExtractPipe []string         `json:"extract_pipe,omitempty"`
 }
 
-// RecordedResponse is the result of a request sent to the target.
-type RecordedResponse struct {
+// RecordedResult is the result of a request sent to the target.
+type RecordedResult struct {
 	Item     string  `json:"item"`
 	Hostname string  `json:"hostname"`
 	Error    string  `json:"error,omitempty"`
@@ -61,7 +61,7 @@ const statusInterval = time.Second
 // recording statistics on the way. When ch is closed or the context is
 // cancelled, the output file is closed, processing stops, and the output
 // channel is closed.
-func (r *Recorder) Run(ctx context.Context, in <-chan Response, out chan<- Response, inCount <-chan int, outCount chan<- int) error {
+func (r *Recorder) Run(ctx context.Context, in <-chan Result, out chan<- Result, inCount <-chan int, outCount chan<- int) error {
 	defer close(out)
 
 	data := r.Data
@@ -79,7 +79,7 @@ func (r *Recorder) Run(ctx context.Context, in <-chan Response, out chan<- Respo
 
 loop:
 	for {
-		var res Response
+		var res Result
 		var ok bool
 
 		select {
@@ -109,10 +109,10 @@ loop:
 
 		data.SentRequests++
 		if !res.Hide {
-			data.ShownResponses++
-			data.Responses = append(data.Responses, NewResponse(res))
+			data.ShownResults++
+			data.Results = append(data.Results, NewResult(res))
 		} else {
-			data.HiddenResponses++
+			data.HiddenResults++
 		}
 		data.End = time.Now()
 
@@ -148,8 +148,8 @@ func (r *Recorder) dump(data Data) error {
 	return ioutil.WriteFile(r.filename, buf, 0644)
 }
 
-// NewResponse builds a Response struct for serialization with JSON.
-func NewResponse(r Response) (res RecordedResponse) {
+// NewResult builds a Result struct for serialization with JSON.
+func NewResult(r Result) (res RecordedResult) {
 	res.Item = r.Item
 	res.Hostname = r.Hostname
 	if r.Duration != 0 {

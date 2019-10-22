@@ -8,7 +8,7 @@ import (
 	"github.com/happal/taifun/cli"
 )
 
-// Reporter prints the Responses to a terminal.
+// Reporter prints the Results to a terminal.
 type Reporter struct {
 	term cli.Terminal
 }
@@ -22,11 +22,11 @@ func NewReporter(term cli.Terminal) *Reporter {
 type Stats struct {
 	Start      time.Time
 	Errors     int
-	Responses  int
+	Results    int
 	IPv4, IPv6 map[string]struct{}
 
-	ShownResponses int
-	Count          int
+	ShownResults int
+	Count        int
 
 	lastRPS time.Time
 	rps     float64
@@ -49,11 +49,11 @@ func formatSeconds(secs float64) string {
 // Report returns a report about the received HTTP status codes.
 func (h *Stats) Report(current string) (res []string) {
 	res = append(res, "")
-	status := fmt.Sprintf("%v of %v requests shown", h.ShownResponses, h.Responses)
+	status := fmt.Sprintf("%v of %v requests shown", h.ShownResults, h.Results)
 	dur := time.Since(h.Start) / time.Second
 
 	if dur > 0 && time.Since(h.lastRPS) > time.Second {
-		h.rps = float64(h.Responses) / float64(dur)
+		h.rps = float64(h.Results) / float64(dur)
 		h.lastRPS = time.Now()
 	}
 
@@ -61,7 +61,7 @@ func (h *Stats) Report(current string) (res []string) {
 		status += fmt.Sprintf(", %.0f req/s", h.rps)
 	}
 
-	todo := h.Count - h.Responses
+	todo := h.Count - h.Results
 	if todo > 0 {
 		status += fmt.Sprintf(", %d todo", todo)
 
@@ -84,8 +84,8 @@ func (h *Stats) Report(current string) (res []string) {
 	return res
 }
 
-// Display shows incoming Responses.
-func (r *Reporter) Display(ch <-chan Response, countChannel <-chan int) error {
+// Display shows incoming Results.
+func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 	r.term.Printf("%-30s %-16s\n", "name", "response")
 
 	stats := &Stats{
@@ -101,7 +101,7 @@ func (r *Reporter) Display(ch <-chan Response, countChannel <-chan int) error {
 		default:
 		}
 
-		stats.Responses++
+		stats.Results++
 		if response.Error != nil {
 			stats.Errors++
 		} else {
@@ -116,14 +116,14 @@ func (r *Reporter) Display(ch <-chan Response, countChannel <-chan int) error {
 
 		if !response.Hide {
 			r.term.Printf("%v\n", response)
-			stats.ShownResponses++
+			stats.ShownResults++
 		}
 
 		r.term.SetStatus(stats.Report(response.Item))
 	}
 
 	r.term.Print("\n")
-	r.term.Printf("processed %d HTTP requests in %v\n", stats.Responses, formatSeconds(time.Since(stats.Start).Seconds()))
+	r.term.Printf("processed %d HTTP requests in %v\n", stats.Results, formatSeconds(time.Since(stats.Start).Seconds()))
 
 	for _, line := range stats.Report("")[1:] {
 		r.term.Print(line)

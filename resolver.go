@@ -14,7 +14,7 @@ import (
 // Resolver executes DNS requests.
 type Resolver struct {
 	input  <-chan string
-	output chan<- Response
+	output chan<- Result
 
 	template string
 	server   string
@@ -50,7 +50,7 @@ func FindSystemNameserver() (string, error) {
 }
 
 // NewResolver returns a new resolver with the given input and output channels.
-func NewResolver(in <-chan string, out chan<- Response, template string, server string) (*Resolver, error) {
+func NewResolver(in <-chan string, out chan<- Result, template string, server string) (*Resolver, error) {
 	if server == "" {
 		return nil, errors.New("nameserver not specified")
 	}
@@ -64,14 +64,14 @@ func NewResolver(in <-chan string, out chan<- Response, template string, server 
 	return res, nil
 }
 
-func (r *Resolver) lookup(ctx context.Context, item string) Response {
+func (r *Resolver) lookup(ctx context.Context, item string) Result {
 	name := strings.Replace(r.template, "FUZZ", item, -1)
 
 	c := dns.Client{}
 	m := dns.Msg{}
 	m.SetQuestion(name, dns.TypeA)
 
-	response := Response{
+	response := Result{
 		Hostname: name,
 		Item:     item,
 	}
