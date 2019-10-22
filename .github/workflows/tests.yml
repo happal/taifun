@@ -32,9 +32,9 @@ jobs:
 
       - name: Build
         run: |
-          GOOS=linux go build -o hagel.linux
-          GOOS=windows go build -o hagel.windows
-          GOOS=darwin go build -o hagel.darwin
+          GOOS=linux go build -o taifun.linux
+          GOOS=windows go build -o taifun.windows
+          GOOS=darwin go build -o taifun.darwin
 
       - name: Run tests
         run: |
