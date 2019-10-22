@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GOPROXY: https://proxy.golang.org,direct
+      GOPROXY: https://proxy.golang.org
 
     steps:
 
