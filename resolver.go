@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strings"
+	"sync"
 
 	"github.com/miekg/dns"
 )
@@ -18,33 +20,39 @@ type Resolver struct {
 	server   string
 }
 
-func findSystemResolver() (string, error) {
-	nameserver := ""
+// FindSystemNameserver returns a name server configured for the system.
+func FindSystemNameserver() (string, error) {
+	var nameserver string
+	var once sync.Once
 	wantError := errors.New("findSystemResolver")
 
 	resolver := &net.Resolver{
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-			nameserver = address
+			host, _, err := net.SplitHostPort(address)
+			if err != nil {
+				return nil, fmt.Errorf("unable to find system nameserver, split failed: %v", err)
+			}
+			once.Do(func() {
+				nameserver = host
+			})
 			return nil, wantError
 		},
 	}
 
 	_, err := resolver.LookupHost(context.Background(), "example.com")
-	if err != wantError {
-		return "", errors.New("unable to find system nameserver, please specify a server manually")
+	if dnsError, ok := err.(*net.DNSError); ok {
+		if dnsError.Err == wantError.Error() {
+			return nameserver, nil
+		}
 	}
 
-	return nameserver, nil
+	return "", errors.New("unable to find system nameserver, please specify a server manually")
 }
 
 // NewResolver returns a new resolver with the given input and output channels.
 func NewResolver(in <-chan string, out chan<- Response, template string, server string) (*Resolver, error) {
 	if server == "" {
-		var err error
-		server, err = findSystemResolver()
-		if err != nil {
-			return nil, err
-		}
+		return nil, errors.New("nameserver not specified")
 	}
 
 	res := &Resolver{

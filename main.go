@@ -224,6 +224,16 @@ func run(ctx context.Context, g *errgroup.Group, opts *Options, args []string) e
 		return err
 	}
 
+	// use the system nameserver if none has been specified
+	if opts.Nameserver == "" {
+		opts.Nameserver, err = FindSystemNameserver()
+		if err != nil {
+			return err
+		}
+
+		term.Printf("found system nameserver %v", opts.Nameserver)
+	}
+
 	// collect the filters for the responses
 	responseFilters, err := setupResponseFilters(opts)
 	if err != nil {
@@ -284,7 +294,7 @@ func run(ctx context.Context, g *errgroup.Group, opts *Options, args []string) e
 	}
 
 	// run the reporter
-	term.Printf("\nusing hostname template: %v\n\n", hostname)
+	term.Printf("hostname template: %v\n\n", hostname)
 	reporter := NewReporter(term)
 	return reporter.Display(responseCh, countCh)
 }
