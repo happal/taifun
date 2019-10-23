@@ -28,20 +28,22 @@ type Data struct {
 	Range       string           `json:"range,omitempty"`
 	RangeFormat string           `json:"range_format,omitempty"`
 	Results     []RecordedResult `json:"responses"`
-	Extract     []string         `json:"extract,omitempty"`
-	ExtractPipe []string         `json:"extract_pipe,omitempty"`
 }
 
 // RecordedResult is the result of a request sent to the target.
 type RecordedResult struct {
-	Item     string  `json:"item"`
-	Hostname string  `json:"hostname"`
-	Error    string  `json:"error,omitempty"`
-	Duration float64 `json:"duration"`
+	Item     string `json:"item"`
+	Hostname string `json:"hostname"`
 
-	StatusCode    int      `json:"status_code"`
-	StatusText    string   `json:"status_text"`
-	ExtractedData []string `json:"extracted_data,omitempty"`
+	Responses map[string]RecordedResponse `json:"responses"`
+}
+
+// RecordedResponse is the result of a request.
+type RecordedResponse struct {
+	Status    string   `json:"status"`
+	Addresses []string `json:"addresses,omitempty"`
+	CNAMEs    []string `json:"cnames,omitempty"`
+	Error     string   `json:"error,omitempty"`
 }
 
 // NewRecorder creates a new  recorder.
@@ -148,15 +150,32 @@ func (r *Recorder) dump(data Data) error {
 	return ioutil.WriteFile(r.filename, buf, 0644)
 }
 
+// NewRecordedResponse creates a response for JSON encoding from a Response.
+func NewRecordedResponse(r Response) RecordedResponse {
+	res := RecordedResponse{
+		Status:    r.Status,
+		Addresses: r.Addresses,
+		CNAMEs:    r.CNAMEs,
+	}
+
+	if r.Error != nil {
+		res.Error = r.Error.Error()
+	}
+
+	return res
+}
+
 // NewResult builds a Result struct for serialization with JSON.
 func NewResult(r Result) (res RecordedResult) {
 	res.Item = r.Item
 	res.Hostname = r.Hostname
-	if r.Duration != 0 {
-		res.Duration = float64(r.Duration) / float64(time.Second)
+
+	res.Responses = make(map[string]RecordedResponse)
+	if !r.A.Empty() {
+		res.Responses["A"] = NewRecordedResponse(r.A)
 	}
-	if r.Error != nil {
-		res.Error = r.Error.Error()
+	if !r.AAAA.Empty() {
+		res.Responses["AAAA"] = NewRecordedResponse(r.AAAA)
 	}
 
 	return res

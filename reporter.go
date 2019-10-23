@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/happal/taifun/cli"
@@ -20,10 +19,10 @@ func NewReporter(term cli.Terminal) *Reporter {
 
 // Stats collects statistics about several responses.
 type Stats struct {
-	Start      time.Time
-	Errors     int
-	Results    int
-	IPv4, IPv6 map[string]struct{}
+	Start          time.Time
+	Errors         int
+	Results        int
+	A, AAAA, CNAME map[string]struct{}
 
 	ShownResults int
 	Count        int
@@ -78,8 +77,8 @@ func (h *Stats) Report(current string) (res []string) {
 	res = append(res, status)
 
 	res = append(res, fmt.Sprintf("errors:    %v", h.Errors))
-	res = append(res, fmt.Sprintf("IPv4:      %v", len(h.IPv4)))
-	res = append(res, fmt.Sprintf("IPv6:      %v", len(h.IPv6)))
+	res = append(res, fmt.Sprintf("A:         %v", len(h.A)))
+	res = append(res, fmt.Sprintf("AAAA:      %v", len(h.AAAA)))
 
 	return res
 }
@@ -90,8 +89,9 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 
 	stats := &Stats{
 		Start: time.Now(),
-		IPv4:  make(map[string]struct{}),
-		IPv6:  make(map[string]struct{}),
+		A:     make(map[string]struct{}),
+		AAAA:  make(map[string]struct{}),
+		CNAME: make(map[string]struct{}),
 	}
 
 	for response := range ch {
@@ -102,15 +102,26 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 		}
 
 		stats.Results++
-		if response.Error != nil {
+
+		if response.A.Error != nil {
 			stats.Errors++
 		} else {
-			for _, addr := range response.Addresses {
-				if strings.Contains(addr, ":") {
-					stats.IPv6[addr] = struct{}{}
-				} else {
-					stats.IPv4[addr] = struct{}{}
-				}
+			for _, addr := range response.A.Addresses {
+				stats.A[addr] = struct{}{}
+			}
+			for _, name := range response.A.CNAMEs {
+				stats.CNAME[name] = struct{}{}
+			}
+		}
+
+		if response.AAAA.Error != nil {
+			stats.Errors++
+		} else {
+			for _, addr := range response.AAAA.Addresses {
+				stats.AAAA[addr] = struct{}{}
+			}
+			for _, name := range response.AAAA.CNAMEs {
+				stats.CNAME[name] = struct{}{}
 			}
 		}
 

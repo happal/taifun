@@ -64,23 +64,17 @@ func NewResolver(in <-chan string, out chan<- Result, template string, server st
 	return res, nil
 }
 
-func (r *Resolver) lookup(ctx context.Context, item string) Result {
-	name := strings.Replace(r.template, "FUZZ", item, -1)
-
+func sendRequest(name, request, server string) (response Response) {
 	c := dns.Client{}
 	m := dns.Msg{}
-	m.SetQuestion(name, dns.TypeA)
+	reqType := dns.StringToType[request]
 
-	response := Result{
-		Hostname: name,
-		Item:     item,
-	}
+	m.SetQuestion(name, reqType)
 
-	res, duration, err := c.Exchange(&m, r.server+":53")
-	response.Duration = duration
+	res, _, err := c.Exchange(&m, server+":53")
 	response.Error = err
 	if err != nil {
-		return response
+		return Response{}
 	}
 
 	response.Status = dns.RcodeToString[res.MsgHdr.Rcode]
@@ -103,12 +97,30 @@ func (r *Resolver) lookup(ctx context.Context, item string) Result {
 			continue
 		}
 		if rec, ok := ans.(*dns.CNAME); ok {
-			response.CNAMES = append(response.CNAMES, strings.TrimRight(rec.Target, "."))
+			response.CNAMEs = append(response.CNAMEs, strings.TrimRight(rec.Target, "."))
 			continue
 		}
 	}
 
 	return response
+}
+
+func (r *Resolver) lookup(ctx context.Context, item string) Result {
+	name := strings.Replace(r.template, "FUZZ", item, -1)
+
+	result := Result{
+		Hostname: name,
+		Item:     item,
+	}
+
+	result.A = sendRequest(name, "A", r.server)
+	result.AAAA = sendRequest(name, "AAAA", r.server)
+
+	if result.A.Status == "NXDOMAIN" || result.AAAA.Status == "NXDOMAIN" {
+		result.NotFound = true
+	}
+
+	return result
 }
 
 // Run runs a resolver, processing requests from the input channel.
