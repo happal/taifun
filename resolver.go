@@ -27,6 +27,9 @@ func FindSystemNameserver() (string, error) {
 	wantError := errors.New("findSystemResolver")
 
 	resolver := &net.Resolver{
+		// do not use the cgo resolver so we can get the IP address of the default nameserver
+		PreferGo: true,
+
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
 			host, _, err := net.SplitHostPort(address)
 			if err != nil {
