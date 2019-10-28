@@ -76,12 +76,12 @@ func (h *Stats) Report(current string) (res []string) {
 
 	res = append(res, status)
 
-	res = append(res, fmt.Sprintf("errors:    %v", h.Errors))
-	res = append(res, fmt.Sprintf("A:         %v", len(h.A)))
-	res = append(res, fmt.Sprintf("AAAA:      %v", len(h.AAAA)))
-	res = append(res, fmt.Sprintf("CNAME:     %v", len(h.CNAME)))
-	res = append(res, fmt.Sprintf("empty:     %v", h.Empty))
-	res = append(res, fmt.Sprintf("delegated: %v", h.Delegated))
+	res = append(res, fmt.Sprintf("errors:       %v", h.Errors))
+	res = append(res, fmt.Sprintf("unique A:     %v", len(h.A)))
+	res = append(res, fmt.Sprintf("unique AAAA:  %v", len(h.AAAA)))
+	res = append(res, fmt.Sprintf("unique CNAME: %v", len(h.CNAME)))
+	res = append(res, fmt.Sprintf("empty:        %v", h.Empty))
+	res = append(res, fmt.Sprintf("delegated:    %v", h.Delegated))
 
 	return res
 }
