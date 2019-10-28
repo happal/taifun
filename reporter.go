@@ -19,9 +19,10 @@ func NewReporter(term cli.Terminal) *Reporter {
 
 // Stats collects statistics about several responses.
 type Stats struct {
-	Start                  time.Time
-	Errors, Results, Empty int
-	A, AAAA, CNAME         map[string]struct{}
+	Start            time.Time
+	Errors, Results  int
+	Empty, Delegated int
+	A, AAAA, CNAME   map[string]struct{}
 
 	ShownResults int
 	Count        int
@@ -80,6 +81,7 @@ func (h *Stats) Report(current string) (res []string) {
 	res = append(res, fmt.Sprintf("AAAA:      %v", len(h.AAAA)))
 	res = append(res, fmt.Sprintf("CNAME:     %v", len(h.CNAME)))
 	res = append(res, fmt.Sprintf("empty:     %v", h.Empty))
+	res = append(res, fmt.Sprintf("delegated: %v", h.Delegated))
 
 	return res
 }
@@ -104,7 +106,9 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 
 		stats.Results++
 
-		if result.Empty() {
+		if result.Delegation() {
+			stats.Delegated++
+		} else if result.Empty() {
 			stats.Empty++
 		}
 

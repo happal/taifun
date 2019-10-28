@@ -32,8 +32,9 @@ type Data struct {
 
 // RecordedResult is the result of a request sent to the target.
 type RecordedResult struct {
-	Item     string `json:"item"`
-	Hostname string `json:"hostname"`
+	Item        string   `json:"item"`
+	Hostname    string   `json:"hostname"`
+	Nameservers []string `json:"nameservers,omitempty"`
 
 	Responses map[string]RecordedResponse `json:"responses"`
 }
@@ -176,6 +177,10 @@ func NewResult(r Result) (res RecordedResult) {
 	}
 	if !r.AAAA.Empty() {
 		res.Responses["AAAA"] = NewRecordedResponse(r.AAAA)
+	}
+
+	if r.Delegation() {
+		res.Nameservers = r.Nameservers
 	}
 
 	return res

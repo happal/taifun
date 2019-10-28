@@ -105,15 +105,26 @@ func sendRequest(name, request, server string) (response Response) {
 
 		if rec, ok := ans.(*dns.A); ok {
 			response.Addresses = append(response.Addresses, rec.A.String())
-			continue
 		}
 		if rec, ok := ans.(*dns.AAAA); ok {
 			response.Addresses = append(response.Addresses, rec.AAAA.String())
-			continue
 		}
 		if rec, ok := ans.(*dns.CNAME); ok {
 			response.CNAMEs = append(response.CNAMEs, cleanHostname(rec.Target))
-			continue
+		}
+	}
+
+	// collect nameservers in case of delegated sub domains
+	for _, ans := range res.Ns {
+		if rec, ok := ans.(*dns.SOA); ok {
+			if rec.Hdr.Name == name {
+				response.SOA = append(response.SOA, cleanHostname(rec.Ns))
+			}
+		}
+		if rec, ok := ans.(*dns.NS); ok {
+			if rec.Hdr.Name == name {
+				response.Nameserver = append(response.Nameserver, cleanHostname(rec.Ns))
+			}
 		}
 	}
 
