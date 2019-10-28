@@ -1,7 +1,6 @@
 module github.com/happal/taifun
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/fd0/termstatus v1.0.1
 	github.com/juju/ratelimit v1.0.1
 	github.com/kr/pretty v0.1.0 // indirect
