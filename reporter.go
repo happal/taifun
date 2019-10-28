@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/happal/taifun/cli"
@@ -9,12 +10,14 @@ import (
 
 // Reporter prints the Results to a terminal.
 type Reporter struct {
-	term cli.Terminal
+	term  cli.Terminal
+	width int
 }
 
-// NewReporter returns a new reporter.
-func NewReporter(term cli.Terminal) *Reporter {
-	return &Reporter{term: term}
+// NewReporter returns a new reporter, width is the length of the hostname
+// template (used for the first column).
+func NewReporter(term cli.Terminal, width int) *Reporter {
+	return &Reporter{term: term, width: width}
 }
 
 // Stats collects statistics about several responses.
@@ -86,9 +89,16 @@ func (h *Stats) Report(current string) (res []string) {
 	return res
 }
 
+func ljust(s string, width int) string {
+	if len(s) < width {
+		return strings.Repeat(" ", width-len(s)) + s
+	}
+	return s
+}
+
 // Display shows incoming Results.
 func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
-	r.term.Printf("%16s   %-16s", "name", "result")
+	r.term.Printf("%s     result", ljust("name  ", r.width))
 
 	stats := &Stats{
 		Start: time.Now(),
@@ -135,7 +145,7 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 		}
 
 		if !result.Hide {
-			r.term.Printf("%16s  %s", result.Hostname, result)
+			r.term.Printf("%s   %s", ljust(result.Hostname, r.width), result)
 			stats.ShownResults++
 		}
 

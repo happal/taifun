@@ -333,7 +333,7 @@ func run(ctx context.Context, g *errgroup.Group, opts *Options, args []string) e
 
 	// run the reporter
 	term.Printf("hostname template: %v\n\n", hostname)
-	reporter := NewReporter(term)
+	reporter := NewReporter(term, len(hostname)+10)
 	return reporter.Display(responseCh, countCh)
 }
 
