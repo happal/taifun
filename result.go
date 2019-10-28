@@ -88,14 +88,6 @@ func (r Result) Empty() bool {
 	return true
 }
 
-func (r Result) sameservers() (list []string) {
-	list = append(list, r.A.Nameserver...)
-	list = append(list, r.A.SOA...)
-	list = append(list, r.AAAA.Nameserver...)
-	list = append(list, r.AAAA.SOA...)
-	return unique(list)
-}
-
 // Delegation returns true if the responses indicate that this may be a degelated subdomain.
 func (r *Result) Delegation() bool {
 	if !r.A.Empty() || !r.AAAA.Empty() {
