@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,6 +39,24 @@ type Options struct {
 	RequestsPerSecond float64
 
 	ShowNotFound bool
+
+	HideNetworks []string
+	hideNetworks []*net.IPNet
+	ShowNetworks []string
+	showNetworks []*net.IPNet
+}
+
+func parseNetworks(nets []string) ([]*net.IPNet, error) {
+	var res []*net.IPNet
+	for _, subnet := range nets {
+		_, network, err := net.ParseCIDR(subnet)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, network)
+	}
+
+	return res, nil
 }
 
 func (opts *Options) valid() (err error) {
@@ -51,6 +70,16 @@ func (opts *Options) valid() (err error) {
 
 	if opts.Range == "" && opts.Filename == "" {
 		return errors.New("neither file nor range specified, nothing to do")
+	}
+
+	opts.hideNetworks, err = parseNetworks(opts.HideNetworks)
+	if err != nil {
+		return err
+	}
+
+	opts.showNetworks, err = parseNetworks(opts.ShowNetworks)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -158,6 +187,15 @@ func setupResultFilters(opts *Options) (filters []Filter, err error) {
 	if !opts.ShowNotFound {
 		filters = append(filters, FilterNotFound())
 	}
+
+	if len(opts.hideNetworks) != 0 {
+		filters = append(filters, FilterInSubnet(opts.hideNetworks))
+	}
+
+	if len(opts.showNetworks) != 0 {
+		filters = append(filters, FilterNotInSubnet(opts.showNetworks))
+	}
+
 	return filters, nil
 }
 
@@ -331,6 +369,8 @@ func main() {
 	flags.StringVar(&opts.Nameserver, "nameserver", "", "send DNS queries to `server`, if empty, the system resolver is used")
 
 	flags.BoolVar(&opts.ShowNotFound, "show-not-found", false, "do not hide 'not found' responses")
+	flags.StringArrayVar(&opts.HideNetworks, "hide-network", nil, "hide responses in `network` (CIDR)")
+	flags.StringArrayVar(&opts.ShowNetworks, "show-network", nil, "only show responses in `network` (CIDR)")
 
 	err := cmd.Execute()
 	if err != nil {
