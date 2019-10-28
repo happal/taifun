@@ -315,7 +315,7 @@ func main() {
 	}
 
 	flags := cmd.Flags()
-	flags.IntVarP(&opts.Threads, "threads", "t", 5, "resolve `n` DNS queries in parallel")
+	flags.IntVarP(&opts.Threads, "threads", "t", 2, "resolve `n` DNS queries in parallel")
 	flags.Float64Var(&opts.RequestsPerSecond, "requests-per-second", 0, "do at most `n` requests per seconds (e.g. 0.5)")
 	flags.IntVar(&opts.BufferSize, "buffer-size", 100000, "set number of buffered items to `n`")
 	flags.StringVar(&opts.Logfile, "logfile", "", "write copy of printed messages to `filename`.log")
