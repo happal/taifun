@@ -79,13 +79,14 @@ func (h *Stats) Report(current string) (res []string) {
 	res = append(res, fmt.Sprintf("errors:    %v", h.Errors))
 	res = append(res, fmt.Sprintf("A:         %v", len(h.A)))
 	res = append(res, fmt.Sprintf("AAAA:      %v", len(h.AAAA)))
+	res = append(res, fmt.Sprintf("CNAME:     %v", len(h.CNAME)))
 
 	return res
 }
 
 // Display shows incoming Results.
 func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
-	r.term.Printf("%-30s %-16s\n", "name", "response")
+	r.term.Printf("%16s   %-16s", "name", "result")
 
 	stats := &Stats{
 		Start: time.Now(),
@@ -94,7 +95,7 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 		CNAME: make(map[string]struct{}),
 	}
 
-	for response := range ch {
+	for result := range ch {
 		select {
 		case c := <-countChannel:
 			stats.Count = c
@@ -103,34 +104,34 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 
 		stats.Results++
 
-		if response.A.Error != nil {
+		if result.A.Error != nil {
 			stats.Errors++
 		} else {
-			for _, addr := range response.A.Addresses {
+			for _, addr := range result.A.Addresses {
 				stats.A[addr] = struct{}{}
 			}
-			for _, name := range response.A.CNAMEs {
+			for _, name := range result.A.CNAMEs {
 				stats.CNAME[name] = struct{}{}
 			}
 		}
 
-		if response.AAAA.Error != nil {
+		if result.AAAA.Error != nil {
 			stats.Errors++
 		} else {
-			for _, addr := range response.AAAA.Addresses {
+			for _, addr := range result.AAAA.Addresses {
 				stats.AAAA[addr] = struct{}{}
 			}
-			for _, name := range response.AAAA.CNAMEs {
+			for _, name := range result.AAAA.CNAMEs {
 				stats.CNAME[name] = struct{}{}
 			}
 		}
 
-		if !response.Hide {
-			r.term.Printf("%v\n", response)
+		if !result.Hide {
+			r.term.Printf("%16s  %s", result.Hostname, result)
 			stats.ShownResults++
 		}
 
-		r.term.SetStatus(stats.Report(response.Item))
+		r.term.SetStatus(stats.Report(result.Item))
 	}
 
 	r.term.Print("\n")

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -19,10 +20,72 @@ type Result struct {
 
 func (r Result) String() (result string) {
 	if r.NotFound {
-		return fmt.Sprintf("%-30s %-16s", r.Hostname, "not found")
+		return fmt.Sprintf("%s not found", r.Hostname)
 	}
 
-	return fmt.Sprintf("%-30s %-16s %-16s", r.Hostname, r.A, r.AAAA)
+	if r.Empty() {
+		return fmt.Sprintf("empty response, subdomain?")
+	}
+
+	addrs := r.Addresses()
+	names := r.CNAMEs()
+	sort.Strings(addrs)
+	sort.Strings(names)
+
+	if len(addrs) > 0 && len(names) == 0 {
+		return strings.Join(addrs, "  ")
+	}
+
+	if len(addrs) == 0 && len(names) > 0 {
+		return "CNAME " + strings.Join(names, ", ")
+	}
+
+	return fmt.Sprintf("%s (CNAME %s)", strings.Join(addrs, "  "), strings.Join(names, ", "))
+}
+
+// CNAMEs returns a list of CNAME responses. Duplicate names are removed.
+func (r Result) CNAMEs() (list []string) {
+	names := make(map[string]struct{})
+	for _, name := range r.A.CNAMEs {
+		names[name] = struct{}{}
+	}
+	for _, name := range r.AAAA.CNAMEs {
+		names[name] = struct{}{}
+	}
+
+	for name := range names {
+		list = append(list, name)
+	}
+
+	return list
+}
+
+// Addresses returns a list of Addresses. Duplicate addresse are removed.
+func (r Result) Addresses() (list []string) {
+	addrs := make(map[string]struct{})
+	for _, addr := range r.A.Addresses {
+		addrs[addr] = struct{}{}
+	}
+	for _, addr := range r.AAAA.Addresses {
+		addrs[addr] = struct{}{}
+	}
+
+	for addr := range addrs {
+		list = append(list, addr)
+	}
+
+	return list
+}
+
+// Empty returns true if all responses are empty.
+func (r Result) Empty() bool {
+	if !r.A.Empty() {
+		return false
+	}
+	if !r.AAAA.Empty() {
+		return false
+	}
+	return true
 }
 
 // Response is a response for a specific DNS request.

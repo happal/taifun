@@ -67,6 +67,18 @@ func NewResolver(in <-chan string, out chan<- Result, template string, server st
 	return res, nil
 }
 
+// cleanHostname removes a trailing dot if present.
+func cleanHostname(h string) string {
+	if h == "" {
+		return h
+	}
+	last := len(h) - 1
+	if h[last] == '.' {
+		return h[:last]
+	}
+	return h
+}
+
 func sendRequest(name, request, server string) (response Response) {
 	c := dns.Client{}
 	m := dns.Msg{}
@@ -100,7 +112,7 @@ func sendRequest(name, request, server string) (response Response) {
 			continue
 		}
 		if rec, ok := ans.(*dns.CNAME); ok {
-			response.CNAMEs = append(response.CNAMEs, strings.TrimRight(rec.Target, "."))
+			response.CNAMEs = append(response.CNAMEs, cleanHostname(rec.Target))
 			continue
 		}
 	}
@@ -112,7 +124,7 @@ func (r *Resolver) lookup(ctx context.Context, item string) Result {
 	name := strings.Replace(r.template, "FUZZ", item, -1)
 
 	result := Result{
-		Hostname: name,
+		Hostname: cleanHostname(name),
 		Item:     item,
 	}
 
