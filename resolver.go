@@ -79,6 +79,13 @@ func cleanHostname(h string) string {
 	return h
 }
 
+func collectRawValues(list []dns.RR) (records []string) {
+	for _, item := range list {
+		records = append(records, strings.Replace(item.String(), "\t", " ", -1))
+	}
+	return records
+}
+
 func sendRequest(name, request, server string) (response Response) {
 	c := dns.Client{}
 	m := dns.Msg{}
@@ -127,6 +134,14 @@ func sendRequest(name, request, server string) (response Response) {
 			}
 		}
 	}
+
+	// collect the raw responses
+	for _, q := range res.Question {
+		response.Raw.Question = append(response.Raw.Question, strings.Replace(q.String()[1:], "\t", " ", -1))
+	}
+	response.Raw.Answer = collectRawValues(res.Answer)
+	response.Raw.Extra = collectRawValues(res.Extra)
+	response.Raw.Nameserver = collectRawValues(res.Ns)
 
 	return response
 }

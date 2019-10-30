@@ -115,7 +115,15 @@ type Response struct {
 	CNAMEs     []string
 	SOA        []string
 	Nameserver []string
-	Error      error
+
+	Raw struct {
+		Question   []string
+		Answer     []string
+		Nameserver []string
+		Extra      []string
+	}
+
+	Error error
 }
 
 func (r Response) String() string {

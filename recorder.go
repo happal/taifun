@@ -41,10 +41,19 @@ type RecordedResult struct {
 
 // RecordedResponse is the result of a request.
 type RecordedResponse struct {
-	Status    string   `json:"status"`
-	Addresses []string `json:"addresses,omitempty"`
-	CNAMEs    []string `json:"cnames,omitempty"`
-	Error     string   `json:"error,omitempty"`
+	Status    string              `json:"status"`
+	Addresses []string            `json:"addresses,omitempty"`
+	CNAMEs    []string            `json:"cnames,omitempty"`
+	Raw       RawRecordedResponse `json:"raw"`
+	Error     string              `json:"error,omitempty"`
+}
+
+// RawRecordedResponse contains the (string versions of) the raw DNS response.
+type RawRecordedResponse struct {
+	Question   []string `json:"question,omitempty"`
+	Answer     []string `json:"answer,omitempty"`
+	Nameserver []string `json:"nameserver,omitempty"`
+	Extra      []string `json:"extra,omitempty"`
 }
 
 // NewRecorder creates a new  recorder.
@@ -157,6 +166,7 @@ func NewRecordedResponse(r Response) RecordedResponse {
 		Status:    r.Status,
 		Addresses: r.Addresses,
 		CNAMEs:    r.CNAMEs,
+		Raw:       RawRecordedResponse(r.Raw),
 	}
 
 	if r.Error != nil {
@@ -171,12 +181,9 @@ func NewResult(r Result) (res RecordedResult) {
 	res.Item = r.Item
 	res.Hostname = r.Hostname
 
-	res.Responses = make(map[string]RecordedResponse)
-	if !r.A.Empty() {
-		res.Responses["A"] = NewRecordedResponse(r.A)
-	}
-	if !r.AAAA.Empty() {
-		res.Responses["AAAA"] = NewRecordedResponse(r.AAAA)
+	res.Responses = map[string]RecordedResponse{
+		"A":    NewRecordedResponse(r.A),
+		"AAAA": NewRecordedResponse(r.AAAA),
 	}
 
 	if r.Delegation() {
