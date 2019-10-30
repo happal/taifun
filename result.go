@@ -26,7 +26,7 @@ func (r Result) String() (result string) {
 	}
 
 	if r.Delegation() {
-		return fmt.Sprintf("delegation, servers: %s", strings.Join(r.Nameservers, ", "))
+		return fmt.Sprintf("potential delegation, servers: %s", strings.Join(r.Nameservers, ", "))
 	}
 
 	if r.Empty() {
