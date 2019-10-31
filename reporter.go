@@ -48,7 +48,7 @@ func formatSeconds(secs float64) string {
 	return fmt.Sprintf("%dm%02ds", min, sec)
 }
 
-// Report returns a report about the received HTTP status codes.
+// Report returns a report about the received response codes.
 func (h *Stats) Report(current string) (res []string) {
 	res = append(res, "")
 	status := fmt.Sprintf("%v of %v requests shown", h.ShownResults, h.Results)
@@ -165,7 +165,7 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 	}
 
 	r.term.Print("\n")
-	r.term.Printf("processed %d HTTP requests in %v\n", stats.Results, formatSeconds(time.Since(stats.Start).Seconds()))
+	r.term.Printf("resolved %d DNS requests in %v\n", stats.Results, formatSeconds(time.Since(stats.Start).Seconds()))
 
 	for _, line := range stats.Report("")[1:] {
 		r.term.Print(line)
