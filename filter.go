@@ -71,3 +71,11 @@ func FilterNotInSubnet(subnets []*net.IPNet) Filter {
 		return true
 	})
 }
+
+// FilterEmptyResponses returns a filter which hides responses with addresses
+// which are not in one of the subnets.
+func FilterEmptyResponses() Filter {
+	return FilterFunc(func(r Result) (reject bool) {
+		return r.Empty()
+	})
+}

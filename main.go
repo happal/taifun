@@ -44,6 +44,7 @@ type Options struct {
 	hideNetworks []*net.IPNet
 	ShowNetworks []string
 	showNetworks []*net.IPNet
+	HideEmpty    bool
 }
 
 func parseNetworks(nets []string) ([]*net.IPNet, error) {
@@ -186,6 +187,10 @@ func setupValueFilters(ctx context.Context, opts *Options, valueCh <-chan string
 func setupResultFilters(opts *Options) (filters []Filter, err error) {
 	if !opts.ShowNotFound {
 		filters = append(filters, FilterNotFound())
+	}
+
+	if opts.HideEmpty {
+		filters = append(filters, FilterEmptyResponses())
 	}
 
 	if len(opts.hideNetworks) != 0 {
@@ -371,6 +376,7 @@ func main() {
 	flags.BoolVar(&opts.ShowNotFound, "show-not-found", false, "do not hide 'not found' responses")
 	flags.StringArrayVar(&opts.HideNetworks, "hide-network", nil, "hide responses in `network` (CIDR)")
 	flags.StringArrayVar(&opts.ShowNetworks, "show-network", nil, "only show responses in `network` (CIDR)")
+	flags.BoolVar(&opts.HideEmpty, "hide-empty", false, "do not show empty responses")
 
 	err := cmd.Execute()
 	if err != nil {
