@@ -93,10 +93,10 @@ func sendRequest(name, request, server string) (response Response) {
 
 	m.SetQuestion(name, reqType)
 
-	res, _, err := c.Exchange(&m, server+":53")
+	res, _, err := c.Exchange(&m, net.JoinHostPort(server, "53"))
 	response.Error = err
 	if err != nil {
-		return Response{}
+		return response
 	}
 
 	response.Status = dns.RcodeToString[res.MsgHdr.Rcode]
@@ -159,6 +159,14 @@ func (r *Resolver) lookup(ctx context.Context, item string) Result {
 
 	if result.A.Status == "NXDOMAIN" || result.AAAA.Status == "NXDOMAIN" {
 		result.NotFound = true
+	}
+
+	if result.A.Error != nil {
+		result.Error = result.A.Error
+	}
+
+	if result.AAAA.Error != nil {
+		result.Error = result.AAAA.Error
 	}
 
 	return result

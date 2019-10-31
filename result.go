@@ -14,6 +14,8 @@ type Result struct {
 	Item     string // requested item and hostname
 	Hostname string
 
+	Error error // combined error for A and AAAA requests
+
 	A    Response
 	AAAA Response
 
@@ -21,6 +23,10 @@ type Result struct {
 }
 
 func (r Result) String() (result string) {
+	if r.Error != nil {
+		return fmt.Sprintf("%s error: %v", r.Hostname, r.Error)
+	}
+
 	if r.NotFound {
 		return fmt.Sprintf("%s not found", r.Hostname)
 	}
