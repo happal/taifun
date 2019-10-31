@@ -119,6 +119,8 @@ func sendRequest(name, request, server string) (response Response) {
 		if rec, ok := ans.(*dns.CNAME); ok {
 			response.CNAMEs = append(response.CNAMEs, cleanHostname(rec.Target))
 		}
+
+		response.TTL = uint(ans.Header().Ttl)
 	}
 
 	// collect nameservers in case of delegated sub domains

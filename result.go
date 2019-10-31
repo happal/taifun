@@ -121,6 +121,7 @@ type Response struct {
 	CNAMEs     []string
 	SOA        []string
 	Nameserver []string
+	TTL        uint
 
 	Raw struct {
 		Question   []string

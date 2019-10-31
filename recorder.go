@@ -44,6 +44,7 @@ type RecordedResponse struct {
 	Status    string              `json:"status"`
 	Addresses []string            `json:"addresses,omitempty"`
 	CNAMEs    []string            `json:"cnames,omitempty"`
+	TTL       uint                `json:"ttl"`
 	Raw       RawRecordedResponse `json:"raw"`
 	Error     string              `json:"error,omitempty"`
 }
@@ -166,6 +167,7 @@ func NewRecordedResponse(r Response) RecordedResponse {
 		Status:    r.Status,
 		Addresses: r.Addresses,
 		CNAMEs:    r.CNAMEs,
+		TTL:       r.TTL,
 		Raw:       RawRecordedResponse(r.Raw),
 	}
 
