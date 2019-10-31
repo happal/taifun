@@ -26,6 +26,10 @@ func FilterNotFound() Filter {
 // of the subnets.
 func FilterInSubnet(subnets []*net.IPNet) Filter {
 	return FilterFunc(func(r Result) (reject bool) {
+		if r.Empty() {
+			return false
+		}
+
 		for _, addr := range r.Addresses() {
 			ip := net.ParseIP(addr)
 			if ip == nil {
@@ -47,6 +51,10 @@ func FilterInSubnet(subnets []*net.IPNet) Filter {
 // which are not in one of the subnets.
 func FilterNotInSubnet(subnets []*net.IPNet) Filter {
 	return FilterFunc(func(r Result) (reject bool) {
+		if r.Empty() {
+			return false
+		}
+
 		for _, addr := range r.Addresses() {
 			ip := net.ParseIP(addr)
 			if ip == nil {
