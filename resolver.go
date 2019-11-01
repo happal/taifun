@@ -86,7 +86,7 @@ func collectRawValues(list []dns.RR) (records []string) {
 	return records
 }
 
-func sendRequest(name, request, server string) (response Response) {
+func sendRequest(name, request, server string) (response DNSResponse, err error) {
 	c := dns.Client{}
 	m := dns.Msg{}
 	reqType := dns.StringToType[request]
@@ -94,9 +94,8 @@ func sendRequest(name, request, server string) (response Response) {
 	m.SetQuestion(name, reqType)
 
 	res, _, err := c.Exchange(&m, net.JoinHostPort(server, "53"))
-	response.Error = err
 	if err != nil {
-		return response
+		return response, nil
 	}
 
 	response.Status = dns.RcodeToString[res.MsgHdr.Rcode]
@@ -111,10 +110,10 @@ func sendRequest(name, request, server string) (response Response) {
 		}
 
 		if rec, ok := ans.(*dns.A); ok {
-			response.Addresses = append(response.Addresses, rec.A.String())
+			response.Responses = append(response.Responses, rec.A.String())
 		}
 		if rec, ok := ans.(*dns.AAAA); ok {
-			response.Addresses = append(response.Addresses, rec.AAAA.String())
+			response.Responses = append(response.Responses, rec.AAAA.String())
 		}
 		if rec, ok := ans.(*dns.CNAME); ok {
 			response.CNAMEs = append(response.CNAMEs, cleanHostname(rec.Target))
@@ -145,7 +144,7 @@ func sendRequest(name, request, server string) (response Response) {
 	response.Raw.Extra = collectRawValues(res.Extra)
 	response.Raw.Nameserver = collectRawValues(res.Ns)
 
-	return response
+	return response, nil
 }
 
 func (r *Resolver) lookup(ctx context.Context, item string) Result {
@@ -154,21 +153,17 @@ func (r *Resolver) lookup(ctx context.Context, item string) Result {
 	result := Result{
 		Hostname: cleanHostname(name),
 		Item:     item,
+		Type:     "A",
 	}
 
-	result.A = sendRequest(name, "A", r.server)
-	result.AAAA = sendRequest(name, "AAAA", r.server)
+	var err error
+	result.DNSResponse, err = sendRequest(name, "A", r.server)
+	if err != nil {
+		result.Error = err
+	}
 
-	if result.A.Status == "NXDOMAIN" || result.AAAA.Status == "NXDOMAIN" {
+	if result.DNSResponse.Status == "NXDOMAIN" {
 		result.NotFound = true
-	}
-
-	if result.A.Error != nil {
-		result.Error = result.A.Error
-	}
-
-	if result.AAAA.Error != nil {
-		result.Error = result.AAAA.Error
 	}
 
 	return result

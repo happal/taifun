@@ -134,24 +134,19 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 			stats.Empty++
 		}
 
-		if result.A.Error != nil {
+		if result.Error != nil {
 			stats.Errors++
 		} else {
-			for _, addr := range result.A.Addresses {
-				stats.A[addr] = struct{}{}
+			if result.Type == "A" {
+				for _, addr := range result.Responses {
+					stats.A[addr] = struct{}{}
+				}
+			} else if result.Type == "AAAA" {
+				for _, addr := range result.Responses {
+					stats.AAAA[addr] = struct{}{}
+				}
 			}
-			for _, name := range result.A.CNAMEs {
-				stats.CNAME[name] = struct{}{}
-			}
-		}
-
-		if result.AAAA.Error != nil {
-			stats.Errors++
-		} else {
-			for _, addr := range result.AAAA.Addresses {
-				stats.AAAA[addr] = struct{}{}
-			}
-			for _, name := range result.AAAA.CNAMEs {
+			for _, name := range result.CNAMEs {
 				stats.CNAME[name] = struct{}{}
 			}
 		}

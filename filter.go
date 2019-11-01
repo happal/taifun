@@ -30,7 +30,7 @@ func FilterInSubnet(subnets []*net.IPNet) Filter {
 			return false
 		}
 
-		for _, addr := range r.Addresses() {
+		for _, addr := range r.Responses {
 			ip := net.ParseIP(addr)
 			if ip == nil {
 				continue
@@ -55,7 +55,7 @@ func FilterNotInSubnet(subnets []*net.IPNet) Filter {
 			return false
 		}
 
-		for _, addr := range r.Addresses() {
+		for _, addr := range r.Responses {
 			ip := net.ParseIP(addr)
 			if ip == nil {
 				continue

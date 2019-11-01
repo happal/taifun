@@ -35,6 +35,7 @@ type RecordedResult struct {
 	Item        string   `json:"item"`
 	Hostname    string   `json:"hostname"`
 	Nameservers []string `json:"nameservers,omitempty"`
+	Error       string   `json:"error"`
 
 	Responses map[string]RecordedResponse `json:"responses"`
 }
@@ -162,17 +163,13 @@ func (r *Recorder) dump(data Data) error {
 }
 
 // NewRecordedResponse creates a response for JSON encoding from a Response.
-func NewRecordedResponse(r Response) RecordedResponse {
+func NewRecordedResponse(r DNSResponse) RecordedResponse {
 	res := RecordedResponse{
 		Status:    r.Status,
-		Addresses: r.Addresses,
+		Addresses: r.Responses,
 		CNAMEs:    r.CNAMEs,
 		TTL:       r.TTL,
 		Raw:       RawRecordedResponse(r.Raw),
-	}
-
-	if r.Error != nil {
-		res.Error = r.Error.Error()
 	}
 
 	return res
@@ -182,15 +179,6 @@ func NewRecordedResponse(r Response) RecordedResponse {
 func NewResult(r Result) (res RecordedResult) {
 	res.Item = r.Item
 	res.Hostname = r.Hostname
-
-	res.Responses = map[string]RecordedResponse{
-		"A":    NewRecordedResponse(r.A),
-		"AAAA": NewRecordedResponse(r.AAAA),
-	}
-
-	if r.Delegation() {
-		res.Nameservers = r.Nameservers
-	}
 
 	return res
 }
