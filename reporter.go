@@ -136,7 +136,7 @@ func printResponse(term printer, width int, result Result) {
 	}
 
 	if result.Empty() {
-		term.Printf("%s   empty response, potential suffix\n", ljust(result.Hostname, width))
+		term.Printf("%s     %8s %8s %6s  %s", ljust(result.Hostname, width), result.RequestType, "", "", "empty response, potential suffix")
 		return
 	}
 
