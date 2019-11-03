@@ -313,7 +313,7 @@ func run(ctx context.Context, g *errgroup.Group, opts *Options, args []string) e
 	responseCh = Mark(responseCh, responseFilters)
 
 	if logfilePrefix != "" {
-		rec, err := NewRecorder(logfilePrefix+".json", hostname)
+		rec, err := NewRecorder(logfilePrefix+".json", cleanHostname(hostname))
 		if err != nil {
 			return err
 		}

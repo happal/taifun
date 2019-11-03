@@ -32,22 +32,23 @@ type Data struct {
 
 // RecordedResult is the result of a request sent to the target.
 type RecordedResult struct {
-	Item        string   `json:"item"`
-	Hostname    string   `json:"hostname"`
-	Nameservers []string `json:"nameservers,omitempty"`
-	Error       string   `json:"error"`
+	Item     string `json:"item"`
+	Hostname string `json:"hostname"`
+	Error    string `json:"error,omitempty"`
 
-	Responses map[string]RecordedResponse `json:"responses"`
+	Status       string              `json:"status"`
+	RequestType  string              `json:"request_type"`
+	ResponseType string              `json:"response_type,omitempty"`
+	Responses    []RecordedResponse  `json:"responses,omitempty"`
+	Raw          RawRecordedResponse `json:"raw"`
 }
 
-// RecordedResponse is the result of a request.
+// RecordedResponse is a serialized response.
 type RecordedResponse struct {
-	Status    string              `json:"status"`
-	Addresses []string            `json:"addresses,omitempty"`
-	CNAMEs    []string            `json:"cnames,omitempty"`
-	TTL       uint                `json:"ttl"`
-	Raw       RawRecordedResponse `json:"raw"`
-	Error     string              `json:"error,omitempty"`
+	Type string `json:"type"`
+	Data string `json:"data"`
+
+	TTL uint `json:"ttl"`
 }
 
 // RawRecordedResponse contains the (string versions of) the raw DNS response.
@@ -162,23 +163,24 @@ func (r *Recorder) dump(data Data) error {
 	return ioutil.WriteFile(r.filename, buf, 0644)
 }
 
-// NewRecordedResponse creates a response for JSON encoding from a Response.
-func NewRecordedResponse(r DNSResponse) RecordedResponse {
-	res := RecordedResponse{
-		Status:    r.Status,
-		Addresses: r.Responses,
-		CNAMEs:    r.CNAMEs,
-		TTL:       r.TTL,
-		Raw:       RawRecordedResponse(r.Raw),
-	}
-
-	return res
-}
-
 // NewResult builds a Result struct for serialization with JSON.
 func NewResult(r Result) (res RecordedResult) {
-	res.Item = r.Item
-	res.Hostname = r.Hostname
+	res = RecordedResult{
+		Item:        r.Item,
+		Hostname:    r.Hostname,
+		RequestType: r.RequestType,
+
+		Status: r.Status,
+
+		Raw: RawRecordedResponse(r.Raw),
+	}
+	if r.Error != nil {
+		res.Error = r.Error.Error()
+	}
+
+	for _, response := range r.Responses {
+		res.Responses = append(res.Responses, RecordedResponse(response))
+	}
 
 	return res
 }

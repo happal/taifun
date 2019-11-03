@@ -30,8 +30,13 @@ func FilterInSubnet(subnets []*net.IPNet) Filter {
 			return false
 		}
 
-		for _, addr := range r.Responses {
-			ip := net.ParseIP(addr)
+		for _, res := range r.Responses {
+			// don't process anything except v4/v6 responses
+			if res.Type != "A" && res.Type != "AAAA" {
+				continue
+			}
+
+			ip := net.ParseIP(res.Data)
 			if ip == nil {
 				continue
 			}
@@ -55,8 +60,13 @@ func FilterNotInSubnet(subnets []*net.IPNet) Filter {
 			return false
 		}
 
-		for _, addr := range r.Responses {
-			ip := net.ParseIP(addr)
+		for _, res := range r.Responses {
+			// don't process anything except v4/v6 responses
+			if res.Type != "A" && res.Type != "AAAA" {
+				continue
+			}
+
+			ip := net.ParseIP(res.Data)
 			if ip == nil {
 				continue
 			}

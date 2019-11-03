@@ -86,21 +86,31 @@ func collectRawValues(list []dns.RR) (records []string) {
 	return records
 }
 
-func sendRequest(name, request, server string) (response DNSResponse, err error) {
+func sendRequest(name, item, requestType, server string) (result Result, err error) {
+	result = Result{
+		Hostname:    cleanHostname(name),
+		Item:        item,
+		RequestType: requestType,
+	}
+
 	c := dns.Client{}
 	m := dns.Msg{}
-	reqType := dns.StringToType[request]
+	reqType := dns.StringToType[requestType]
 
 	m.SetQuestion(name, reqType)
 
 	res, _, err := c.Exchange(&m, net.JoinHostPort(server, "53"))
 	if err != nil {
-		return response, nil
+		return result, err
 	}
 
-	response.Status = dns.RcodeToString[res.MsgHdr.Rcode]
+	result.Status = dns.RcodeToString[res.MsgHdr.Rcode]
 	if res.MsgHdr.Rcode != dns.RcodeSuccess {
-		response.Failure = true
+		result.Failure = true
+	}
+
+	if result.Status == "NXDOMAIN" {
+		result.NotFound = true
 	}
 
 	for _, ans := range res.Answer {
@@ -110,60 +120,46 @@ func sendRequest(name, request, server string) (response DNSResponse, err error)
 		}
 
 		if rec, ok := ans.(*dns.A); ok {
-			response.Responses = append(response.Responses, rec.A.String())
+			result.Responses = append(result.Responses, NewResponse("A", rec.Header().Ttl, rec.A.String()))
 		}
 		if rec, ok := ans.(*dns.AAAA); ok {
-			response.Responses = append(response.Responses, rec.AAAA.String())
+			result.Responses = append(result.Responses, NewResponse("AAAA", rec.Header().Ttl, rec.AAAA.String()))
 		}
 		if rec, ok := ans.(*dns.CNAME); ok {
-			response.CNAMEs = append(response.CNAMEs, cleanHostname(rec.Target))
+			result.Responses = append(result.Responses, NewResponse("CNAME", rec.Header().Ttl, rec.Target))
 		}
-
-		response.TTL = uint(ans.Header().Ttl)
 	}
 
 	// collect nameservers in case of delegated sub domains
 	for _, ans := range res.Ns {
 		if rec, ok := ans.(*dns.SOA); ok {
 			if rec.Hdr.Name == name {
-				response.SOA = append(response.SOA, cleanHostname(rec.Ns))
+				result.SOA = append(result.SOA, NewResponse("SOA", rec.Header().Ttl, cleanHostname(rec.Ns)))
 			}
 		}
 		if rec, ok := ans.(*dns.NS); ok {
 			if rec.Hdr.Name == name {
-				response.Nameserver = append(response.Nameserver, cleanHostname(rec.Ns))
+				result.Nameserver = append(result.Nameserver, NewResponse("NS", rec.Header().Ttl, cleanHostname(rec.Ns)))
 			}
 		}
 	}
 
 	// collect the raw responses
 	for _, q := range res.Question {
-		response.Raw.Question = append(response.Raw.Question, strings.Replace(q.String()[1:], "\t", " ", -1))
+		result.Raw.Question = append(result.Raw.Question, strings.Replace(q.String()[1:], "\t", " ", -1))
 	}
-	response.Raw.Answer = collectRawValues(res.Answer)
-	response.Raw.Extra = collectRawValues(res.Extra)
-	response.Raw.Nameserver = collectRawValues(res.Ns)
+	result.Raw.Answer = collectRawValues(res.Answer)
+	result.Raw.Extra = collectRawValues(res.Extra)
+	result.Raw.Nameserver = collectRawValues(res.Ns)
 
-	return response, nil
+	return result, nil
 }
 
 func (r *Resolver) lookup(ctx context.Context, item string) Result {
 	name := strings.Replace(r.template, "FUZZ", item, -1)
-
-	result := Result{
-		Hostname: cleanHostname(name),
-		Item:     item,
-		Type:     "A",
-	}
-
-	var err error
-	result.DNSResponse, err = sendRequest(name, "A", r.server)
+	result, err := sendRequest(name, item, "A", r.server)
 	if err != nil {
 		result.Error = err
-	}
-
-	if result.DNSResponse.Status == "NXDOMAIN" {
-		result.NotFound = true
 	}
 
 	return result

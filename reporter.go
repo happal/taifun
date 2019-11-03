@@ -108,6 +108,37 @@ func ljust(s string, width int) string {
 	return s
 }
 
+type printer interface {
+	Printf(string, ...interface{})
+}
+
+func printResponse(term printer, width int, result Result) {
+	if result.Delegation() {
+		var servers []string
+		for _, res := range result.Nameserver {
+			servers = append(servers, res.Data)
+		}
+
+		term.Printf("%s   potential delegation, servers: %s",
+			ljust(result.Hostname, width),
+			strings.Join(servers, ", "))
+	}
+
+	if result.Empty() {
+		term.Printf("%s   empty response, potential suffix\n", ljust(result.Hostname, width))
+	}
+
+	for _, response := range result.Responses {
+		term.Printf("%s   %v %v %v %v\n",
+			ljust(result.Hostname, width),
+			result.RequestType,
+			response.Type,
+			response.TTL,
+			response.Data,
+		)
+	}
+}
+
 // Display shows incoming Results.
 func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 	r.term.Printf("%s     result", ljust("name  ", r.width))
@@ -136,23 +167,21 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 
 		if result.Error != nil {
 			stats.Errors++
-		} else {
-			if result.Type == "A" {
-				for _, addr := range result.Responses {
-					stats.A[addr] = struct{}{}
-				}
-			} else if result.Type == "AAAA" {
-				for _, addr := range result.Responses {
-					stats.AAAA[addr] = struct{}{}
-				}
-			}
-			for _, name := range result.CNAMEs {
-				stats.CNAME[name] = struct{}{}
+		}
+
+		for _, response := range result.Responses {
+			switch response.Type {
+			case "A":
+				stats.A[response.Data] = struct{}{}
+			case "AAAA":
+				stats.AAAA[response.Data] = struct{}{}
+			case "CNAME":
+				stats.CNAME[response.Data] = struct{}{}
 			}
 		}
 
 		if !result.Hide {
-			r.term.Printf("%s   %s", ljust(result.Hostname, r.width), result)
+			printResponse(r.term, r.width, result)
 			stats.ShownResults++
 		}
 
