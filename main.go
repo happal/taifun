@@ -22,9 +22,10 @@ import (
 
 // Options collect global options for the program.
 type Options struct {
-	Range       string
-	RangeFormat string
-	Filename    string
+	Range        string
+	RangeFormat  string
+	Filename     string
+	RequestTypes []string
 
 	BufferSize int
 	Skip       int
@@ -60,6 +61,11 @@ func parseNetworks(nets []string) ([]*net.IPNet, error) {
 	return res, nil
 }
 
+var validRequestTypes = map[string]struct{}{
+	"A":    struct{}{},
+	"AAAA": struct{}{},
+}
+
 func (opts *Options) valid() (err error) {
 	if opts.Threads <= 0 {
 		return errors.New("invalid number of threads")
@@ -81,6 +87,12 @@ func (opts *Options) valid() (err error) {
 	opts.showNetworks, err = parseNetworks(opts.ShowNetworks)
 	if err != nil {
 		return err
+	}
+
+	for _, t := range opts.RequestTypes {
+		if _, ok := validRequestTypes[t]; !ok {
+			return fmt.Errorf("invalid request type %q", t)
+		}
 	}
 
 	return nil
@@ -207,7 +219,7 @@ func setupResultFilters(opts *Options) (filters []Filter, err error) {
 func startResolvers(ctx context.Context, opts *Options, hostname string, in <-chan string) (<-chan Result, error) {
 	out := make(chan Result)
 
-	resolver, err := NewResolver(in, out, hostname, opts.Nameserver)
+	resolver, err := NewResolver(in, out, hostname, opts.Nameserver, opts.RequestTypes)
 	if err != nil {
 		return nil, err
 	}
@@ -370,6 +382,7 @@ func main() {
 	flags.StringVarP(&opts.Filename, "file", "f", "", "read values to test from `filename`")
 	flags.StringVarP(&opts.Range, "range", "r", "", "test range `from-to`")
 	flags.StringVar(&opts.RangeFormat, "range-format", "%d", "set `format` for range")
+	flags.StringArrayVar(&opts.RequestTypes, "request-types", []string{"A", "AAAA"}, "request `TYPE,TYPE2` for each host")
 
 	flags.StringVar(&opts.Nameserver, "nameserver", "", "send DNS queries to `server`, if empty, the system resolver is used")
 

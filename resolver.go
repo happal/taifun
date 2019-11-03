@@ -13,8 +13,9 @@ import (
 
 // Resolver executes DNS requests.
 type Resolver struct {
-	input  <-chan string
-	output chan<- Result
+	input        <-chan string
+	output       chan<- Result
+	requestTypes []string
 
 	template string
 	server   string
@@ -53,16 +54,17 @@ func FindSystemNameserver() (string, error) {
 }
 
 // NewResolver returns a new resolver with the given input and output channels.
-func NewResolver(in <-chan string, out chan<- Result, template string, server string) (*Resolver, error) {
+func NewResolver(in <-chan string, out chan<- Result, template string, server string, requestTypes []string) (*Resolver, error) {
 	if server == "" {
 		return nil, errors.New("nameserver not specified")
 	}
 
 	res := &Resolver{
-		input:    in,
-		output:   out,
-		template: template,
-		server:   server,
+		input:        in,
+		output:       out,
+		template:     template,
+		server:       server,
+		requestTypes: requestTypes,
 	}
 	return res, nil
 }
@@ -126,7 +128,7 @@ func sendRequest(name, item, requestType, server string) (result Result, err err
 			result.Responses = append(result.Responses, NewResponse("AAAA", rec.Header().Ttl, rec.AAAA.String()))
 		}
 		if rec, ok := ans.(*dns.CNAME); ok {
-			result.Responses = append(result.Responses, NewResponse("CNAME", rec.Header().Ttl, rec.Target))
+			result.Responses = append(result.Responses, NewResponse("CNAME", rec.Header().Ttl, cleanHostname(rec.Target)))
 		}
 	}
 
@@ -155,9 +157,9 @@ func sendRequest(name, item, requestType, server string) (result Result, err err
 	return result, nil
 }
 
-func (r *Resolver) lookup(ctx context.Context, item string) Result {
+func (r *Resolver) lookup(ctx context.Context, item, requestType string) Result {
 	name := strings.Replace(r.template, "FUZZ", item, -1)
-	result, err := sendRequest(name, item, "A", r.server)
+	result, err := sendRequest(name, item, requestType, r.server)
 	if err != nil {
 		result.Error = err
 	}
@@ -168,12 +170,14 @@ func (r *Resolver) lookup(ctx context.Context, item string) Result {
 // Run runs a resolver, processing requests from the input channel.
 func (r *Resolver) Run(ctx context.Context) {
 	for item := range r.input {
-		res := r.lookup(ctx, item)
+		for _, requestType := range r.requestTypes {
+			res := r.lookup(ctx, item, requestType)
 
-		select {
-		case <-ctx.Done():
-			return
-		case r.output <- res:
+			select {
+			case <-ctx.Done():
+				return
+			case r.output <- res:
+			}
 		}
 	}
 }

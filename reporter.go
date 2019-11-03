@@ -131,7 +131,7 @@ func printResponse(term printer, width int, result Result) {
 			text += fmt.Sprintf(", SOA: %s", strings.Join(soa, ", "))
 		}
 
-		term.Printf("%s   %s", ljust(result.Hostname, width), text)
+		term.Printf("%s     %8s %8s %6s  %s", ljust(result.Hostname, width), result.RequestType, "", "", text)
 		return
 	}
 
@@ -141,6 +141,9 @@ func printResponse(term printer, width int, result Result) {
 	}
 
 	for _, response := range result.Responses {
+		if response.Type == result.RequestType {
+			response.Type = ""
+		}
 		term.Printf("%s     %8v %8v %6v  %v\n",
 			ljust(result.Hostname, width),
 			result.RequestType,
