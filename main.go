@@ -388,7 +388,7 @@ func main() {
 	flags.StringVarP(&opts.Filename, "file", "f", "", "read values to test from `filename`")
 	flags.StringVarP(&opts.Range, "range", "r", "", "test range `from-to`")
 	flags.StringVar(&opts.RangeFormat, "range-format", "%d", "set `format` for range")
-	flags.StringArrayVar(&opts.RequestTypes, "request-types", []string{"A", "AAAA"}, "request `TYPE,TYPE2` for each host")
+	flags.StringSliceVar(&opts.RequestTypes, "request-types", []string{"A", "AAAA"}, "request `TYPE,TYPE2` for each host")
 
 	flags.StringVar(&opts.Nameserver, "nameserver", "", "send DNS queries to `server`, if empty, the system resolver is used")
 
