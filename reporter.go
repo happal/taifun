@@ -115,42 +115,34 @@ type printer interface {
 	Printf(string, ...interface{})
 }
 
-func printResponse(term printer, width int, result Result) {
+func printResult(term printer, width int, result Result) {
 	if result.Delegation() {
-		var servers []string
-		for _, res := range result.Nameserver {
-			servers = append(servers, res.Data)
-		}
-		var soa []string
-		for _, res := range result.SOA {
-			soa = append(soa, res.Data)
-		}
-
-		text := "potential delegation"
-		if len(servers) > 0 {
-			text += fmt.Sprintf(", servers: %s", strings.Join(servers, ", "))
-		}
-		if len(soa) > 0 {
-			text += fmt.Sprintf(", SOA: %s", strings.Join(soa, ", "))
-		}
-
-		term.Printf("%s %8s %8s %6s  %s", ljust(result.Hostname, width), result.RequestType, "", "", text)
+		text := fmt.Sprintf("potential delegation, servers: %s", strings.Join(result.Nameservers(), ", "))
+		term.Printf("%s %8s %8s %6s  %s", ljust(result.Hostname, width), "", "", "", text)
 		return
 	}
 
 	if result.Empty() {
-		term.Printf("%s %8s %8s %6s  %s", ljust(result.Hostname, width), result.RequestType, "", "", "empty response, potential suffix")
+		term.Printf("%s %8s %8s %6s  %s", ljust(result.Hostname, width), "", "", "", "empty response, potential suffix")
 		return
 	}
 
-	for _, response := range result.Responses {
-		term.Printf("%s %8v %8v %6v  %v\n",
-			ljust(result.Hostname, width),
-			result.RequestType,
-			response.Type,
-			response.TTL,
-			response.Data,
-		)
+	for _, request := range result.Requests {
+		if request.Hide {
+			continue
+		}
+		for _, response := range request.Responses {
+			if response.Hide {
+				continue
+			}
+			term.Printf("%s %8v %8v %6v  %v\n",
+				ljust(result.Hostname, width),
+				request.Type,
+				response.Type,
+				response.TTL,
+				response.Data,
+			)
+		}
 	}
 }
 
@@ -182,25 +174,27 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 			stats.Empty++
 		}
 
-		if result.Error != nil {
-			stats.Errors++
-		}
+		for _, request := range result.Requests {
+			if request.Error != nil {
+				stats.Errors++
+			}
 
-		for _, response := range result.Responses {
-			switch response.Type {
-			case "A":
-				stats.A[response.Data] = struct{}{}
-			case "AAAA":
-				stats.AAAA[response.Data] = struct{}{}
-			case "MX":
-				stats.MX[response.Data] = struct{}{}
-			case "CNAME":
-				stats.CNAME[response.Data] = struct{}{}
+			for _, response := range request.Responses {
+				switch response.Type {
+				case "A":
+					stats.A[response.Data] = struct{}{}
+				case "AAAA":
+					stats.AAAA[response.Data] = struct{}{}
+				case "MX":
+					stats.MX[response.Data] = struct{}{}
+				case "CNAME":
+					stats.CNAME[response.Data] = struct{}{}
+				}
 			}
 		}
 
 		if !result.Hide {
-			printResponse(r.term, r.width, result)
+			printResult(r.term, r.width, result)
 			stats.ShownResults++
 		}
 

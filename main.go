@@ -199,25 +199,32 @@ func setupValueFilters(ctx context.Context, opts *Options, valueCh <-chan string
 	return valueCh, countCh
 }
 
-func setupResultFilters(opts *Options) (filters []Filter, err error) {
+// Filters collects all filters executed on Results.
+type Filters struct {
+	Result   []ResultFilter
+	Request  []RequestFilter
+	Response []ResponseFilter
+}
+
+func setupResultFilters(opts *Options) (filters Filters, err error) {
 	if !opts.ShowNotFound {
-		filters = append(filters, FilterNotFound())
+		filters.Request = append(filters.Request, FilterNotFound())
 	}
 
 	if opts.HideEmpty {
-		filters = append(filters, FilterEmptyResponses())
+		filters.Result = append(filters.Result, FilterEmptyResults())
 	}
 
 	if opts.HideDelegations {
-		filters = append(filters, FilterDelegations())
+		filters.Result = append(filters.Result, FilterDelegations())
 	}
 
 	if len(opts.hideNetworks) != 0 {
-		filters = append(filters, FilterInSubnet(opts.hideNetworks))
+		filters.Response = append(filters.Response, FilterInSubnet(opts.hideNetworks))
 	}
 
 	if len(opts.showNetworks) != 0 {
-		filters = append(filters, FilterNotInSubnet(opts.showNetworks))
+		filters.Response = append(filters.Response, FilterNotInSubnet(opts.showNetworks))
 	}
 
 	return filters, nil

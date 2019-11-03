@@ -19,8 +19,8 @@ type Data struct {
 	End           time.Time `json:"end"`
 	TotalRequests int       `json:"total_requests"`
 	SentRequests  int       `json:"sent_requests"`
-	HiddenResults int       `json:"hidden_responses"`
-	ShownResults  int       `json:"shown_responses"`
+	HiddenResults int       `json:"hidden_results"`
+	ShownResults  int       `json:"shown_results"`
 	Cancelled     bool      `json:"cancelled"`
 
 	Hostname    string           `json:"hostname"`
@@ -34,13 +34,22 @@ type Data struct {
 type RecordedResult struct {
 	Item     string `json:"item"`
 	Hostname string `json:"hostname"`
-	Error    string `json:"error,omitempty"`
 
-	Status       string              `json:"status"`
-	RequestType  string              `json:"request_type"`
-	ResponseType string              `json:"response_type,omitempty"`
-	Responses    []RecordedResponse  `json:"responses,omitempty"`
-	Raw          RawRecordedResponse `json:"raw"`
+	PotentialSuffix     bool     `json:"potential_prefix,omitempty"`
+	PotentialDelegation bool     `json:"potential_delegation,omitempty"`
+	Nameservers         []string `json:"nameservers,omitempty"`
+
+	Requests []RecordedRequest `json:"requests"`
+}
+
+// RecordedRequest captures one particular request.
+type RecordedRequest struct {
+	Error string `json:"error,omitempty"`
+
+	Type      string              `json:"type"`
+	Status    string              `json:"status"`
+	Responses []RecordedResponse  `json:"responses,omitempty"`
+	Raw       RawRecordedResponse `json:"raw"`
 }
 
 // RecordedResponse is a serialized response.
@@ -65,6 +74,7 @@ func NewRecorder(filename string, hostname string) (*Recorder, error) {
 		filename: filename,
 		Data: Data{
 			Hostname: hostname,
+			Results:  []RecordedResult{},
 		},
 	}
 	return rec, nil
@@ -125,10 +135,14 @@ loop:
 		data.SentRequests++
 		if !res.Hide {
 			data.ShownResults++
-			data.Results = append(data.Results, NewResult(res))
+			rres := NewResult(res)
+			if !rres.Empty() {
+				data.Results = append(data.Results, rres)
+			}
 		} else {
 			data.HiddenResults++
 		}
+
 		data.End = time.Now()
 
 		if time.Since(lastStatus) > statusInterval {
@@ -166,21 +180,68 @@ func (r *Recorder) dump(data Data) error {
 // NewResult builds a Result struct for serialization with JSON.
 func NewResult(r Result) (res RecordedResult) {
 	res = RecordedResult{
-		Item:        r.Item,
-		Hostname:    r.Hostname,
-		RequestType: r.RequestType,
-
-		Status: r.Status,
-
-		Raw: RawRecordedResponse(r.Raw),
-	}
-	if r.Error != nil {
-		res.Error = r.Error.Error()
+		Item:     r.Item,
+		Hostname: r.Hostname,
+		Requests: []RecordedRequest{},
 	}
 
-	for _, response := range r.Responses {
-		res.Responses = append(res.Responses, RecordedResponse(response))
+	if r.Delegation() {
+		res.PotentialDelegation = true
+		res.Nameservers = r.Nameservers()
+		return res
+	}
+
+	if r.Empty() {
+		res.PotentialSuffix = true
+		return res
+	}
+
+	for _, request := range r.Requests {
+		// do not record hidden requests
+		if request.Hide || request.Empty() {
+			continue
+		}
+		req := RecordedRequest{
+			Status: request.Status,
+			Type:   request.Type,
+			Raw:    RawRecordedResponse(request.Raw),
+		}
+		if request.Error != nil {
+			req.Error = request.Error.Error()
+		}
+
+		for _, response := range request.Responses {
+			// do not record hidden responses
+			if response.Hide {
+				continue
+			}
+
+			req.Responses = append(req.Responses, RecordedResponse{
+				Type: response.Type,
+				Data: response.Data,
+				TTL:  response.TTL,
+			})
+		}
+
+		if len(req.Responses) == 0 {
+			continue
+		}
+
+		res.Requests = append(res.Requests, req)
 	}
 
 	return res
+}
+
+// Empty returns true if the responses are all hidden or empty.
+func (r RecordedResult) Empty() bool {
+	if len(r.Requests) > 0 {
+		return false
+	}
+
+	if r.PotentialSuffix || r.PotentialDelegation {
+		return false
+	}
+
+	return true
 }

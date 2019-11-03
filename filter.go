@@ -1,50 +1,72 @@
 package main
 
-import "net"
+import (
+	"net"
+)
 
-// Filter decides whether to reject a Result.
-type Filter interface {
+// RequestFilter decides whether to reject a Request/Response.
+type RequestFilter interface {
+	Reject(Request) bool
+}
+
+// RequestFilterFunc wraps a function so that it implements thi Filter interface.
+type RequestFilterFunc func(Request) bool
+
+// Reject runs f on the Request.
+func (f RequestFilterFunc) Reject(r Request) bool {
+	return f(r)
+}
+
+// ResultFilter decides whether to reject a Result.
+type ResultFilter interface {
 	Reject(Result) bool
 }
 
-// FilterFunc wraps a function so that it implements thi Filter interface.
-type FilterFunc func(Result) bool
+// ResultFilterFunc wraps a function so that it implements thi Filter interface.
+type ResultFilterFunc func(Result) bool
 
 // Reject runs f on the Result.
-func (f FilterFunc) Reject(r Result) bool {
+func (f ResultFilterFunc) Reject(r Result) bool {
+	return f(r)
+}
+
+// ResponseFilter decides whether to reject a Response.
+type ResponseFilter interface {
+	Reject(Response) bool
+}
+
+// ResponseFilterFunc wraps a function so that it implements thi Filter interface.
+type ResponseFilterFunc func(Response) bool
+
+// Reject runs f on the Response.
+func (f ResponseFilterFunc) Reject(r Response) bool {
 	return f(r)
 }
 
 // FilterNotFound returns a filter which hides "not found" responses.
-func FilterNotFound() Filter {
-	return FilterFunc(func(r Result) (reject bool) {
+func FilterNotFound() RequestFilter {
+	return RequestFilterFunc(func(r Request) (reject bool) {
 		return r.NotFound
 	})
 }
 
 // FilterInSubnet returns a filter which hides responses with addresses in one
 // of the subnets.
-func FilterInSubnet(subnets []*net.IPNet) Filter {
-	return FilterFunc(func(r Result) (reject bool) {
-		if r.Empty() {
+func FilterInSubnet(subnets []*net.IPNet) ResponseFilter {
+	return ResponseFilterFunc(func(res Response) (reject bool) {
+		// don't process anything except v4/v6 responses
+		if res.Type != "A" && res.Type != "AAAA" {
 			return false
 		}
 
-		for _, res := range r.Responses {
-			// don't process anything except v4/v6 responses
-			if res.Type != "A" && res.Type != "AAAA" {
-				continue
-			}
+		ip := net.ParseIP(res.Data)
+		if ip == nil {
+			return false
+		}
 
-			ip := net.ParseIP(res.Data)
-			if ip == nil {
-				continue
-			}
-
-			for _, subnet := range subnets {
-				if subnet.Contains(ip) {
-					return true
-				}
+		for _, subnet := range subnets {
+			if subnet.Contains(ip) {
+				return true
 			}
 		}
 
@@ -54,27 +76,21 @@ func FilterInSubnet(subnets []*net.IPNet) Filter {
 
 // FilterNotInSubnet returns a filter which hides responses with addresses
 // which are not in one of the subnets.
-func FilterNotInSubnet(subnets []*net.IPNet) Filter {
-	return FilterFunc(func(r Result) (reject bool) {
-		if r.Empty() {
+func FilterNotInSubnet(subnets []*net.IPNet) ResponseFilter {
+	return ResponseFilterFunc(func(res Response) (reject bool) {
+		// don't process anything except v4/v6 responses
+		if res.Type != "A" && res.Type != "AAAA" {
 			return false
 		}
 
-		for _, res := range r.Responses {
-			// don't process anything except v4/v6 responses
-			if res.Type != "A" && res.Type != "AAAA" {
-				continue
-			}
+		ip := net.ParseIP(res.Data)
+		if ip == nil {
+			return false
+		}
 
-			ip := net.ParseIP(res.Data)
-			if ip == nil {
-				continue
-			}
-
-			for _, subnet := range subnets {
-				if subnet.Contains(ip) {
-					return false
-				}
+		for _, subnet := range subnets {
+			if subnet.Contains(ip) {
+				return false
 			}
 		}
 
@@ -82,17 +98,16 @@ func FilterNotInSubnet(subnets []*net.IPNet) Filter {
 	})
 }
 
-// FilterEmptyResponses returns a filter which hides responses with addresses
-// which are not in one of the subnets.
-func FilterEmptyResponses() Filter {
-	return FilterFunc(func(r Result) (reject bool) {
+// FilterEmptyResults returns a filter which hides responses.
+func FilterEmptyResults() ResultFilter {
+	return ResultFilterFunc(func(r Result) (reject bool) {
 		return r.Empty()
 	})
 }
 
 // FilterDelegations returns a filter which hides potential delegations.
-func FilterDelegations() Filter {
-	return FilterFunc(func(r Result) (reject bool) {
+func FilterDelegations() ResultFilter {
+	return ResultFilterFunc(func(r Result) (reject bool) {
 		return r.Delegation()
 	})
 }

@@ -88,11 +88,9 @@ func collectRawValues(list []dns.RR) (records []string) {
 	return records
 }
 
-func sendRequest(name, item, requestType, server string) (result Result, err error) {
-	result = Result{
-		Hostname:    cleanHostname(name),
-		Item:        item,
-		RequestType: requestType,
+func sendRequest(name, item, requestType, server string) (request Request) {
+	request = Request{
+		Type: requestType,
 	}
 
 	c := dns.Client{}
@@ -103,16 +101,17 @@ func sendRequest(name, item, requestType, server string) (result Result, err err
 
 	res, _, err := c.Exchange(&m, net.JoinHostPort(server, "53"))
 	if err != nil {
-		return result, err
+		request.Error = err
+		return request
 	}
 
-	result.Status = dns.RcodeToString[res.MsgHdr.Rcode]
+	request.Status = dns.RcodeToString[res.MsgHdr.Rcode]
 	if res.MsgHdr.Rcode != dns.RcodeSuccess {
-		result.Failure = true
+		request.Failure = true
 	}
 
-	if result.Status == "NXDOMAIN" {
-		result.NotFound = true
+	if request.Status == "NXDOMAIN" {
+		request.NotFound = true
 	}
 
 	for _, ans := range res.Answer {
@@ -122,16 +121,16 @@ func sendRequest(name, item, requestType, server string) (result Result, err err
 		}
 
 		if rec, ok := ans.(*dns.A); ok {
-			result.Responses = append(result.Responses, NewResponse("A", rec.Header().Ttl, rec.A.String()))
+			request.Responses = append(request.Responses, NewResponse("A", rec.Header().Ttl, rec.A.String()))
 		}
 		if rec, ok := ans.(*dns.AAAA); ok {
-			result.Responses = append(result.Responses, NewResponse("AAAA", rec.Header().Ttl, rec.AAAA.String()))
+			request.Responses = append(request.Responses, NewResponse("AAAA", rec.Header().Ttl, rec.AAAA.String()))
 		}
 		if rec, ok := ans.(*dns.CNAME); ok {
-			result.Responses = append(result.Responses, NewResponse("CNAME", rec.Header().Ttl, cleanHostname(rec.Target)))
+			request.Responses = append(request.Responses, NewResponse("CNAME", rec.Header().Ttl, cleanHostname(rec.Target)))
 		}
 		if rec, ok := ans.(*dns.MX); ok {
-			result.Responses = append(result.Responses, NewResponse("MX", rec.Header().Ttl, cleanHostname(rec.Mx)))
+			request.Responses = append(request.Responses, NewResponse("MX", rec.Header().Ttl, cleanHostname(rec.Mx)))
 		}
 	}
 
@@ -139,32 +138,37 @@ func sendRequest(name, item, requestType, server string) (result Result, err err
 	for _, ans := range res.Ns {
 		if rec, ok := ans.(*dns.SOA); ok {
 			if rec.Hdr.Name == name {
-				result.SOA = append(result.SOA, NewResponse("SOA", rec.Header().Ttl, cleanHostname(rec.Ns)))
+				request.SOA = append(request.SOA, NewResponse("SOA", rec.Header().Ttl, cleanHostname(rec.Ns)))
 			}
 		}
 		if rec, ok := ans.(*dns.NS); ok {
 			if rec.Hdr.Name == name {
-				result.Nameserver = append(result.Nameserver, NewResponse("NS", rec.Header().Ttl, cleanHostname(rec.Ns)))
+				request.Nameserver = append(request.Nameserver, NewResponse("NS", rec.Header().Ttl, cleanHostname(rec.Ns)))
 			}
 		}
 	}
 
 	// collect the raw responses
 	for _, q := range res.Question {
-		result.Raw.Question = append(result.Raw.Question, strings.Replace(q.String()[1:], "\t", " ", -1))
+		request.Raw.Question = append(request.Raw.Question, strings.Replace(q.String()[1:], "\t", " ", -1))
 	}
-	result.Raw.Answer = collectRawValues(res.Answer)
-	result.Raw.Extra = collectRawValues(res.Extra)
-	result.Raw.Nameserver = collectRawValues(res.Ns)
+	request.Raw.Answer = collectRawValues(res.Answer)
+	request.Raw.Extra = collectRawValues(res.Extra)
+	request.Raw.Nameserver = collectRawValues(res.Ns)
 
-	return result, nil
+	return request
 }
 
-func (r *Resolver) lookup(ctx context.Context, item, requestType string) Result {
+func (r *Resolver) lookup(ctx context.Context, item string) Result {
 	name := strings.Replace(r.template, "FUZZ", item, -1)
-	result, err := sendRequest(name, item, requestType, r.server)
-	if err != nil {
-		result.Error = err
+
+	result := Result{
+		Hostname: cleanHostname(name),
+		Item:     item,
+	}
+
+	for _, requestType := range r.requestTypes {
+		result.Requests = append(result.Requests, sendRequest(name, item, requestType, r.server))
 	}
 
 	return result
@@ -173,14 +177,12 @@ func (r *Resolver) lookup(ctx context.Context, item, requestType string) Result 
 // Run runs a resolver, processing requests from the input channel.
 func (r *Resolver) Run(ctx context.Context) {
 	for item := range r.input {
-		for _, requestType := range r.requestTypes {
-			res := r.lookup(ctx, item, requestType)
+		res := r.lookup(ctx, item)
 
-			select {
-			case <-ctx.Done():
-				return
-			case r.output <- res:
-			}
+		select {
+		case <-ctx.Done():
+			return
+		case r.output <- res:
 		}
 	}
 }
