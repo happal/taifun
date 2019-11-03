@@ -41,11 +41,12 @@ type Options struct {
 
 	ShowNotFound bool
 
-	HideNetworks []string
-	hideNetworks []*net.IPNet
-	ShowNetworks []string
-	showNetworks []*net.IPNet
-	HideEmpty    bool
+	HideNetworks    []string
+	hideNetworks    []*net.IPNet
+	ShowNetworks    []string
+	showNetworks    []*net.IPNet
+	HideEmpty       bool
+	HideDelegations bool
 }
 
 func parseNetworks(nets []string) ([]*net.IPNet, error) {
@@ -62,8 +63,9 @@ func parseNetworks(nets []string) ([]*net.IPNet, error) {
 }
 
 var validRequestTypes = map[string]struct{}{
-	"A":    struct{}{},
-	"AAAA": struct{}{},
+	"A":     struct{}{},
+	"AAAA":  struct{}{},
+	"CNAME": struct{}{},
 }
 
 func (opts *Options) valid() (err error) {
@@ -203,6 +205,10 @@ func setupResultFilters(opts *Options) (filters []Filter, err error) {
 
 	if opts.HideEmpty {
 		filters = append(filters, FilterEmptyResponses())
+	}
+
+	if opts.HideDelegations {
+		filters = append(filters, FilterDelegations())
 	}
 
 	if len(opts.hideNetworks) != 0 {
@@ -390,6 +396,7 @@ func main() {
 	flags.StringArrayVar(&opts.HideNetworks, "hide-network", nil, "hide responses in `network` (CIDR)")
 	flags.StringArrayVar(&opts.ShowNetworks, "show-network", nil, "only show responses in `network` (CIDR)")
 	flags.BoolVar(&opts.HideEmpty, "hide-empty", false, "do not show empty responses")
+	flags.BoolVar(&opts.HideDelegations, "hide-delegations", false, "do not show potential delegations")
 
 	err := cmd.Execute()
 	if err != nil {

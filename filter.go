@@ -89,3 +89,10 @@ func FilterEmptyResponses() Filter {
 		return r.Empty()
 	})
 }
+
+// FilterDelegations returns a filter which hides potential delegations.
+func FilterDelegations() Filter {
+	return FilterFunc(func(r Result) (reject bool) {
+		return r.Delegation()
+	})
+}
