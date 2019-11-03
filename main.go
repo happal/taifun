@@ -66,6 +66,7 @@ var validRequestTypes = map[string]struct{}{
 	"A":     struct{}{},
 	"AAAA":  struct{}{},
 	"CNAME": struct{}{},
+	"MX":    struct{}{},
 }
 
 func (opts *Options) valid() (err error) {
