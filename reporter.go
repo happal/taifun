@@ -127,14 +127,27 @@ func printResult(term printer, width int, result Result) {
 		return
 	}
 
+	lastCNAME := ""
+request_loop:
 	for _, request := range result.Requests {
 		if request.Hide {
 			continue
 		}
+
 		for _, response := range request.Responses {
 			if response.Hide {
 				continue
 			}
+
+			if response.Type == "CNAME" {
+				// only display the first CNAME response unless the CNAME has changed
+				if response.Data == lastCNAME {
+					continue request_loop
+				}
+
+				lastCNAME = response.Data
+			}
+
 			term.Printf("%s %8v %8v %6v  %v\n",
 				ljust(result.Hostname, width),
 				request.Type,
