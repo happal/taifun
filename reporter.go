@@ -118,18 +118,30 @@ func printResponse(term printer, width int, result Result) {
 		for _, res := range result.Nameserver {
 			servers = append(servers, res.Data)
 		}
+		var soa []string
+		for _, res := range result.SOA {
+			soa = append(soa, res.Data)
+		}
 
-		term.Printf("%s   potential delegation, servers: %s",
-			ljust(result.Hostname, width),
-			strings.Join(servers, ", "))
+		text := "potential delegation"
+		if len(servers) > 0 {
+			text += fmt.Sprintf(", servers: %s", strings.Join(servers, ", "))
+		}
+		if len(soa) > 0 {
+			text += fmt.Sprintf(", SOA: %s", strings.Join(soa, ", "))
+		}
+
+		term.Printf("%s   %s", ljust(result.Hostname, width), text)
+		return
 	}
 
 	if result.Empty() {
 		term.Printf("%s   empty response, potential suffix\n", ljust(result.Hostname, width))
+		return
 	}
 
 	for _, response := range result.Responses {
-		term.Printf("%s   %v %v %v %v\n",
+		term.Printf("%s     %8v %8v %6v  %v\n",
 			ljust(result.Hostname, width),
 			result.RequestType,
 			response.Type,
@@ -141,7 +153,8 @@ func printResponse(term printer, width int, result Result) {
 
 // Display shows incoming Results.
 func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
-	r.term.Printf("%s     result", ljust("name  ", r.width))
+	r.term.Printf("%s     %8s %8s %6s  %s", ljust("", r.width), "request", "response", "", "")
+	r.term.Printf("%s     %8s %8s %6s  %s", ljust("name  ", r.width), "type", "type", "TTL", "response")
 
 	stats := &Stats{
 		Start: time.Now(),

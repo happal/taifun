@@ -61,7 +61,7 @@ func (r *Result) Delegation() bool {
 		return false
 	}
 
-	return len(r.Nameserver) > 0
+	return len(r.Nameserver) > 0 || len(r.SOA) > 0
 }
 
 // Mark runs the filters on all responses and marks those that should be hidden.
