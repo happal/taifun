@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -47,6 +48,8 @@ type Options struct {
 	showNetworks    []*net.IPNet
 	HideEmpty       bool
 	HideDelegations bool
+	HideCNAMEs      []string
+	hideCNAMEs      []*regexp.Regexp
 }
 
 func parseNetworks(nets []string) ([]*net.IPNet, error) {
@@ -57,6 +60,19 @@ func parseNetworks(nets []string) ([]*net.IPNet, error) {
 			return nil, err
 		}
 		res = append(res, network)
+	}
+
+	return res, nil
+}
+
+func compileRegexps(pattern []string) (res []*regexp.Regexp, err error) {
+	for _, pat := range pattern {
+		r, err := regexp.Compile(pat)
+		if err != nil {
+			return nil, fmt.Errorf("regexp %q failed to compile: %v", pat, err)
+		}
+
+		res = append(res, r)
 	}
 
 	return res, nil
@@ -88,6 +104,11 @@ func (opts *Options) valid() (err error) {
 	}
 
 	opts.showNetworks, err = parseNetworks(opts.ShowNetworks)
+	if err != nil {
+		return err
+	}
+
+	opts.hideCNAMEs, err = compileRegexps(opts.HideCNAMEs)
 	if err != nil {
 		return err
 	}
@@ -225,6 +246,10 @@ func setupResultFilters(opts *Options) (filters Filters, err error) {
 
 	if len(opts.showNetworks) != 0 {
 		filters.Response = append(filters.Response, FilterNotInSubnet(opts.showNetworks))
+	}
+
+	if len(opts.hideCNAMEs) != 0 {
+		filters.Response = append(filters.Response, FilterRejectCNAMEs(opts.hideCNAMEs))
 	}
 
 	return filters, nil
@@ -403,6 +428,7 @@ func main() {
 	flags.BoolVar(&opts.ShowNotFound, "show-not-found", false, "do not hide 'not found' responses")
 	flags.StringArrayVar(&opts.HideNetworks, "hide-network", nil, "hide responses in `network` (CIDR)")
 	flags.StringArrayVar(&opts.ShowNetworks, "show-network", nil, "only show responses in `network` (CIDR)")
+	flags.StringArrayVar(&opts.HideCNAMEs, "hide-cname", nil, "hide CNAME responses matching `regex`")
 	flags.BoolVar(&opts.HideEmpty, "hide-empty", false, "do not show empty responses")
 	flags.BoolVar(&opts.HideDelegations, "hide-delegations", false, "do not show potential delegations")
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"net"
+	"regexp"
 )
 
 // RequestFilter decides whether to reject a Request/Response.
@@ -109,5 +110,22 @@ func FilterEmptyResults() ResultFilter {
 func FilterDelegations() ResultFilter {
 	return ResultFilterFunc(func(r Result) (reject bool) {
 		return r.Delegation()
+	})
+}
+
+// FilterRejectCNAMEs return a filter which hides cnames matching any of the patterns.
+func FilterRejectCNAMEs(patterns []*regexp.Regexp) ResponseFilter {
+	return ResponseFilterFunc(func(r Response) (reject bool) {
+		if r.Type != "CNAME" {
+			return false
+		}
+
+		for _, pat := range patterns {
+			if pat.Match([]byte(r.Data)) {
+				return true
+			}
+		}
+
+		return false
 	})
 }
