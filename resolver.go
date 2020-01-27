@@ -132,6 +132,9 @@ func sendRequest(name, item, requestType, server string) (request Request) {
 		if rec, ok := ans.(*dns.MX); ok {
 			request.Responses = append(request.Responses, NewResponse("MX", rec.Header().Ttl, cleanHostname(rec.Mx)))
 		}
+		if rec, ok := ans.(*dns.PTR); ok {
+			request.Responses = append(request.Responses, NewResponse("PTR", rec.Header().Ttl, cleanHostname(rec.Ptr)))
+		}
 	}
 
 	// collect nameservers in case of delegated sub domains

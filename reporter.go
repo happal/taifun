@@ -22,10 +22,10 @@ func NewReporter(term cli.Terminal, width int) *Reporter {
 
 // Stats collects statistics about several responses.
 type Stats struct {
-	Start              time.Time
-	Errors, Results    int
-	Empty, Delegated   int
-	A, AAAA, MX, CNAME map[string]struct{}
+	Start                   time.Time
+	Errors, Results         int
+	Empty, Delegated        int
+	A, AAAA, MX, CNAME, PTR map[string]struct{}
 
 	ShownResults int
 	Count        int
@@ -87,6 +87,9 @@ func (h *Stats) Report(current string) (res []string) {
 	}
 	if len(h.AAAA) > 0 {
 		res = append(res, fmt.Sprintf("unique AAAA:  %v", len(h.AAAA)))
+	}
+	if len(h.PTR) > 0 {
+		res = append(res, fmt.Sprintf("unique PTR:   %v", len(h.PTR)))
 	}
 	if len(h.MX) > 0 {
 		res = append(res, fmt.Sprintf("unique MX:    %v", len(h.MX)))
@@ -170,6 +173,7 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 		AAAA:  make(map[string]struct{}),
 		MX:    make(map[string]struct{}),
 		CNAME: make(map[string]struct{}),
+		PTR:   make(map[string]struct{}),
 	}
 
 	for result := range ch {
@@ -202,6 +206,8 @@ func (r *Reporter) Display(ch <-chan Result, countChannel <-chan int) error {
 					stats.MX[response.Data] = struct{}{}
 				case "CNAME":
 					stats.CNAME[response.Data] = struct{}{}
+				case "PTR":
+					stats.PTR[response.Data] = struct{}{}
 				}
 			}
 		}
