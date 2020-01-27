@@ -129,3 +129,20 @@ func FilterRejectCNAMEs(patterns []*regexp.Regexp) ResponseFilter {
 		return false
 	})
 }
+
+// FilterRejectPTR returns a filter which hides PTR responses matching one of the patterns.
+func FilterRejectPTR(patterns []*regexp.Regexp) ResponseFilter {
+	return ResponseFilterFunc(func(r Response) (reject bool) {
+		if r.Type != "PTR" {
+			return false
+		}
+
+		for _, pat := range patterns {
+			if pat.Match([]byte(r.Data)) {
+				return true
+			}
+		}
+
+		return false
+	})
+}

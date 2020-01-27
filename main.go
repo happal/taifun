@@ -50,6 +50,8 @@ type Options struct {
 	HideDelegations bool
 	HideCNAMEs      []string
 	hideCNAMEs      []*regexp.Regexp
+	HidePTR         []string
+	hidePTR         []*regexp.Regexp
 }
 
 func parseNetworks(nets []string) ([]*net.IPNet, error) {
@@ -110,6 +112,11 @@ func (opts *Options) valid() (err error) {
 	}
 
 	opts.hideCNAMEs, err = compileRegexps(opts.HideCNAMEs)
+	if err != nil {
+		return err
+	}
+
+	opts.hidePTR, err = compileRegexps(opts.HidePTR)
 	if err != nil {
 		return err
 	}
@@ -251,6 +258,10 @@ func setupResultFilters(opts *Options) (filters Filters, err error) {
 
 	if len(opts.hideCNAMEs) != 0 {
 		filters.Response = append(filters.Response, FilterRejectCNAMEs(opts.hideCNAMEs))
+	}
+
+	if len(opts.hidePTR) != 0 {
+		filters.Response = append(filters.Response, FilterRejectPTR(opts.hidePTR))
 	}
 
 	return filters, nil
@@ -430,6 +441,7 @@ func main() {
 	flags.StringArrayVar(&opts.HideNetworks, "hide-network", nil, "hide responses in `network` (CIDR)")
 	flags.StringArrayVar(&opts.ShowNetworks, "show-network", nil, "only show responses in `network` (CIDR)")
 	flags.StringArrayVar(&opts.HideCNAMEs, "hide-cname", nil, "hide CNAME responses matching `regex`")
+	flags.StringArrayVar(&opts.HidePTR, "hide-ptr", nil, "hide PTR responses matching `regex`")
 	flags.BoolVar(&opts.HideEmpty, "hide-empty", false, "do not show empty responses")
 	flags.BoolVar(&opts.HideDelegations, "hide-delegations", false, "do not show potential delegations")
 
